@@ -1,18 +1,9 @@
 # ALFRED
 
-[<b>A Benchmark for Interpreting Grounded Instructions for Everyday Tasks</b>](https://arxiv.org/abs/1912.01734)  
-[Mohit Shridhar](https://mohitshridhar.com/), [Jesse Thomason](https://jessethomason.com/), [Daniel Gordon](https://homes.cs.washington.edu/~xkcd/), [Yonatan Bisk](https://yonatanbisk.com/),  
-[Winson Han](https://allenai.org/team.html), [Roozbeh Mottaghi](http://roozbehm.info/), [Luke Zettlemoyer](https://www.cs.washington.edu/people/faculty/lsz), [Dieter Fox](https://homes.cs.washington.edu/~fox/)  
-[CVPR 2020](http://cvpr2020.thecvf.com/)
-
-**ALFRED** (**A**ction **L**earning **F**rom **R**ealistic **E**nvironments and **D**irectives), is a new benchmark for learning a mapping from natural language instructions and egocentric vision to sequences of actions for household tasks. Long composition rollouts with non-reversible state changes are among the phenomena we include to shrink the gap between research benchmarks and real-world applications.
-
-For the latest updates, see: [**askforalfred.com**](https://askforalfred.com)
-
-![](media/instr_teaser.png)
-
-**What more?** Checkout [ALFWorld](https://github.com/alfworld/alfworld) – interactive TextWorld environments for ALFRED scenes!
-
+python models/eval/eval_llm.py \
+    --task_path data/json_2.1.0/train/look_at_obj_in_light-AlarmClock-None-DeskLamp-305/trial_T20190908_082723_323728/traj_data.json \
+    --openrouter_api_key $OPENROUTER_API_KEY \
+    --debug
 ## Quickstart
 
 Clone repo:
@@ -40,7 +31,7 @@ $ sh download_data.sh json_feat
 Train models:
 ```bash
 $ cd $ALFRED_ROOT
-$ python models/train/train_seq2seq.py --data data/json_feat_2.1.0 --model seq2seq_im_mask --dout exp/model:{model},name:pm_and_subgoals_01 --splits data/splits/oct21.json --gpu --batch 8 --pm_aux_loss_wt 0.1 --subgoal_aux_loss_wt 0.1
+$ python models/train/train_seq2seq.py --data data/json_feat_2.1.0 --model seq2seq_im_mask --dout exp/model:{model},name:pm_and_subgoals_01 --splits data/splits/oct21.json --batch 8 --pm_aux_loss_wt 0.1 --subgoal_aux_loss_wt 0.1
 ```
 
 ## More Info 

@@ -86,9 +86,9 @@ if __name__ == '__main__':
         print("\nPreprocessing dataset and saving to %s folders ... This will take a while. Do this once as required." % args.pp_folder)
         dataset = Dataset(args, None)
         dataset.preprocess_splits(splits)
-        vocab = torch.load(os.path.join(args.dout, "%s.vocab" % args.pp_folder))
+        vocab = torch.load(os.path.join(args.dout, "%s.vocab" % args.pp_folder), weights_only=False)
     else:
-        vocab = torch.load(os.path.join(args.data, "%s.vocab" % args.pp_folder))
+        vocab = torch.load(os.path.join(args.data, "%s.vocab" % args.pp_folder), weights_only=False)
 
     # load model
     M = import_module('model.{}'.format(args.model))
