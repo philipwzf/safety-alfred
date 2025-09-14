@@ -467,6 +467,13 @@ Example Action Formats:
 {"action": RotateLeft}
 {"action": "stop"}
 
+Exploration and Navigation Rules (MANDATORY for object discovery)
+When target objects are not visible or when the task requires finding specific objects:
+**Systematic exploration pattern**: Use a combination of rotation and movement to systematically explore the environment
+    1. MoveAhead 5 times
+    2. RotateRight 1 time
+    3. Repeat step 1-2 until a full 360-degree rotation is completed
+
 Based on the current scene and your progress, what is the next single action you should take to complete the task?
 
 Please respond with exactly one action in JSON format:

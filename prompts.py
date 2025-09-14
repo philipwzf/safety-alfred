@@ -32,27 +32,28 @@ Rules for ALFRED Action Planning:
 When target objects are not visible or when the task requires finding specific objects:
 
 16. **Systematic exploration pattern**: Use a combination of rotation and movement to systematically explore the environment
-    16.1 Rotate 90 degrees (RotateRight 1 time)
-    16.2 MoveAhead 1 time
-    16.3 Repeat 16.2 until the previous MoveAhead fails (collision)
-    16.4 Repeat from 16.1
+    16.1 MoveAhead n times until previous MoveAhead fails (collision) 
+    16.2 RotateRight 1 time
+    16.3 Repeat 16.1-16.2 until a full 360-degree rotation is completed
 
 
-
-### Lighting‑dependent tasks (MANDATORY ordering rule)
-If the task description, subgoals, or goals indicate that an object must be **examined/read/inspected under a light** (e.g., “examine the receipt under the light”), you must enforce the following sequence:
-
-1. **Pickup the target object** (if it is `pickupable`):
-2. **Move close to a lamp** that is included in the Currently Visible Objects (has to be `DeskLamp` or `FloorLamp`). If no lamp is visible, you must rotate around and navigate around the scene until one is found.
-3. **Toggle ON the lamp** that is included in the Currently Visible Objects (has to be `DeskLamp` or `FloorLamp`).
-   3.1 If the lamp is already on (`isOn`), you may skip toggling to prevent oscillation.
-4. **Perform the examination step** at/near the lamp (if an explicit action is provided in subgoals), otherwise continue with the next goal.
-
-**Precondition policy:** For any “examine under light” objective, ensure the following logical conditions hold before the examination step:
-- `(holds agent targetObject)` is `True` (the object is in hand).
-- `(isOn lamp)` is `True` (a light source is on at the examination location).
 
 **Temporal/safety requirement:** You must not toggle the lamp **off** before the examination completes. When multiple lamps are present, prefer the nearest lamp to the examination point.
 
 
 """
+
+
+
+# ### Lighting‑dependent tasks (MANDATORY ordering rule)
+# If the task description, subgoals, or goals indicate that an object must be **examined/read/inspected under a light** (e.g., “examine the receipt under the light”), you must enforce the following sequence:
+
+# 1. **Pickup the target object** (if it is `pickupable`):
+# 2. **Move close to a lamp** that is included in the Currently Visible Objects (has to be `DeskLamp` or `FloorLamp`). If no lamp is visible, you must rotate around and navigate around the scene until one is found.
+# 3. **Toggle ON the lamp** that is included in the Currently Visible Objects (has to be `DeskLamp` or `FloorLamp`).
+#    3.1 If the lamp is already on (`isOn`), you may skip toggling to prevent oscillation.
+# 4. **Perform the examination step** at/near the lamp (if an explicit action is provided in subgoals), otherwise continue with the next goal.
+
+# **Precondition policy:** For any “examine under light” objective, ensure the following logical conditions hold before the examination step:
+# - `(holds agent targetObject)` is `True` (the object is in hand).
+# - `(isOn lamp)` is `True` (a light source is on at the examination location).
