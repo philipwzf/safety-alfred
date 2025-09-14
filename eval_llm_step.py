@@ -1,5 +1,7 @@
 import os
 import sys
+
+from prompts import SYS_PROMPT
 # Add project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
@@ -9,10 +11,12 @@ from datetime import datetime
 from env.thor_env import ThorEnv
 import requests
 API_KEY = os.getenv("API_KEY")
+HOLDING_OBJECT = False
+HOLDING_OBJECT_ID = None
 
-class EvalLLMStandalone:
+class EvalLLMStepwise:
     '''
-    evaluate LLM performance on ALFRED tasks using zero-shot prompting - standalone version
+    evaluate LLM performance on ALFRED tasks using step-by-step planning - each action planned based on current scene
     '''
 
     def __init__(self, args, manager=None):
@@ -27,7 +31,7 @@ class EvalLLMStandalone:
         # Setup simple logging
         os.makedirs('logs', exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.log_file = f"logs/llm_eval_{timestamp}.txt"
+        self.log_file = f"logs/llm_stepwise_eval_{timestamp}.txt"
         print(f"Logging to: {self.log_file}")
 
     def log(self, message):
@@ -97,7 +101,6 @@ class EvalLLMStandalone:
 
         scene_name = 'FloorPlan%d' % scene_num
         # reset env
-        # TODO: adjust visibility distance as needed, default is 1.5
         env.reset(scene_name)
         
         # setup initial conditions
@@ -113,7 +116,7 @@ class EvalLLMStandalone:
         env.set_task(traj_data, args, reward_type=reward_type)
 
     def evaluate(self, env, r_idx, traj_data, args, lock, successes, failures, results):
-        EvalLLMStandalone.log_method = self.log
+        EvalLLMStepwise.log_method = self.log
 
         # setup scene
         reward_type = 'dense'
@@ -127,61 +130,69 @@ class EvalLLMStandalone:
         self.log(f"Scene: {traj_data['scene']['scene_num']}")
         self.log(f"Objects: {list(traj_data['scene']['object_poses'])}")
 
-        # Get scene information for LLM
-        scene_info = self.get_scene_info(env, traj_data)
-        
-        # Generate LLM plan
-        llm_plan = self.generate_llm_plan(goal_instr, scene_info, args)
-        
-        # Execute plan
+        # Initialize execution variables
         done, success = False, False
         fails = 0
         t = 0
         reward = 0
-        action_idx = 0
+        action_history = []
 
-        print(f"Generated plan with {len(llm_plan)} actions")
+        print(f"Starting stepwise LLM planning")
         
-        while not done and action_idx < len(llm_plan):
-            # break if max_steps reached
-            if t >= args.max_steps:
-                print("Max steps reached")
-                break
-
-            # Get next action from LLM plan
-            if action_idx >= len(llm_plan):
-                print("Plan completed")
+        while not done and t < args.max_steps:
+            # Get current scene information for LLM
+            scene_info = self.get_scene_info(env, traj_data)
+            
+            # Generate next action using LLM based on current scene
+            next_action = self.generate_next_action(goal_instr, scene_info, action_history, args)
+            
+            if not next_action:
+                print("No action generated")
                 break
                 
-            action_data = llm_plan[action_idx]
-            action = action_data.get('action')
+            action = next_action.get('action')
             
             if not action:
-                print("Invalid action in plan")
+                print("Invalid action generated")
                 break
                 
             # Check if stop action
             if action.lower() in ['stop', 'end', 'finish', 'done']:
-                print("\tLLM predicted STOP")
+                print(f"\tStep {t}: LLM predicted STOP")
                 break
 
+            # Log the action
+            self.log(f"Step {t}: Generated action: {next_action}")
+            
             # print action
             if args.debug:
                 print(f"Step {t}: {action}")
 
             # Execute action in environment
-            t_success, _, _, err, _ = env.va_interact(action, interact_mask=None, smooth_nav=args.smooth_nav, debug=args.debug)
+            t_success, event, err = self.execute_action(env, next_action, smooth_nav=args.smooth_nav)   
+            # Add to action history
+            action_history.append({
+                'step': t,
+                'action': next_action,
+                'success': t_success,
+                'error': err if not t_success else None
+            })
+            
             if not t_success:
                 fails += 1
+                self.log(f"Step {t}: Action failed with error: {err}")
                 if fails >= args.max_fails:
                     print("Interact API failed %d times" % fails + "; latest error '%s'" % err)
                     break
+            else:
+                # Reset fails counter on successful action
+                fails = 0
+                
 
             # next time-step
             t_reward, t_done = env.get_transition_reward()
             reward += t_reward
             t += 1
-            action_idx += 1
 
         # check if goal was satisfied
         goal_satisfied = env.get_goal_satisfied()
@@ -217,8 +228,8 @@ class EvalLLMStandalone:
                      'path_len_weighted_goal_condition_spl': float(plw_pc_spl),
                      'path_len_weight': int(path_len_weight),
                      'reward': float(reward),
-                     'llm_plan_length': len(llm_plan),
-                     'executed_actions': action_idx}
+                     'executed_actions': len(action_history),
+                     'total_steps': t}
                      
         if success:
             successes.append(log_entry)
@@ -242,21 +253,110 @@ class EvalLLMStandalone:
 
         lock.release()
 
+    def execute_action(self, env, action_dict, smooth_nav=False):
+        """
+        Execute action from dict format like {"action": "PickupObject", "object_id": "..."}
+        """
+        action_name = action_dict.get('action')
+        object_id = action_dict.get('object_id', '')
+        
+        try:
+            event, api_action = env.to_thor_api_exec(action_name, object_id, smooth_nav=smooth_nav)
+            success = event.metadata['lastActionSuccess']
+            error = event.metadata.get('errorMessage', '') if not success else ''
+            return success, event, error
+        except Exception as e:
+            return False, None, str(e)
+
+    @classmethod
+    def generate_next_action(cls, goal_instr, scene_info, action_history, args):
+        """
+        Generate next single action using DeepSeek model through OpenRouter
+        """
+        # Create prompt for LLM
+        prompt = cls.create_stepwise_prompt(goal_instr, scene_info, action_history)
+
+        # Log the prompt
+        cls.log_method("=" * 50)
+        cls.log_method(f"STEP {len(action_history)} PROMPT:")
+        cls.log_method(prompt)
+        cls.log_method("=" * 50)
+        
+        try:
+            # Call OpenRouter API with DeepSeek model
+            headers = {
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://github.com/safety-alfred",
+                "X-Title": "Safety ALFRED Stepwise Evaluation"
+            }
+            
+            data = {
+                "model": getattr(args, 'llm_model', 'deepseek/deepseek-chat'),
+                "messages": [
+                    {"role": "system", "content": SYS_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": getattr(args, 'max_tokens', 500),  # Reduced for single action
+                "temperature": getattr(args, 'temperature', 0.1),
+                "top_p": getattr(args, 'top_p', 1.0),
+                "frequency_penalty": getattr(args, 'frequency_penalty', 0.0),
+                "presence_penalty": getattr(args, 'presence_penalty', 0.0)
+            }
+            
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers=headers,
+                json=data
+            )
+            
+            if response.status_code == 200:
+                response_json = response.json()
+                action_text = response_json['choices'][0]['message']['content']
+                
+                # Log the response
+                if hasattr(cls, 'log_method'):
+                    cls.log_method(f"STEP {len(action_history)} LLM RESPONSE:")
+                    cls.log_method(action_text)
+                    cls.log_method("-" * 50)
+                
+                action = cls.parse_single_action(action_text)
+                print(f"Step {len(action_history)} LLM Response: {action_text}")
+                return action
+            else:
+                error_msg = f"Error calling OpenRouter API: {response.status_code} - {response.text}"
+                print(error_msg)
+                if hasattr(cls, 'log_method'):
+                    cls.log_method(f"ERROR: {error_msg}")
+                # Fallback to simple action
+                return {'action': 'stop'}
+            
+        except Exception as e:
+            error_msg = f"Error calling LLM: {e}"
+            print(error_msg)
+            if hasattr(cls, 'log_method'):
+                cls.log_method(f"ERROR: {error_msg}")
+            # Fallback to simple action
+            return {'action': 'stop'}
+
     @classmethod
     def get_scene_info(cls, env, traj_data):
         """
-        Extract scene information for LLM input
+        Extract current scene information for LLM input
         """
+        metadata = env.last_event.metadata
+        
         scene_info = {
             'scene_num': traj_data['scene']['scene_num'],
             'objects': [],
-            'receptacles': [],
-            'agent_position': env.last_event.metadata['agent']['position'],
-            'agent_rotation': env.last_event.metadata['agent']['rotation']
+            'agent_position': metadata['agent']['position'],
+            'agent_rotation': metadata['agent']['rotation'],
+            'agent_inventory': metadata['inventoryObjects'],  # Objects being held
+            'agent_held_object': metadata['inventoryObjects'][0] if metadata['inventoryObjects'] else None
         }
         
         # Get all objects in scene
-        for obj in env.last_event.metadata['objects']:
+        for obj in metadata['objects']:
             obj_info = {
                 'objectType': obj['objectType'],
                 'objectId': obj['objectId'],
@@ -278,123 +378,73 @@ class EvalLLMStandalone:
                 'isUsedUp': obj.get('isUsedUp', False),
                 'cookable': obj.get('cookable', False),
                 'isCooked': obj.get('isCooked', False),
-                'temperature': obj.get('temperature', 'RoomTemp')
+                'temperature': obj.get('temperature', 'RoomTemp'),
+                'isSliced': obj.get('isSliced', False),  # Add sliced state
+                'isPickedUp': obj['objectId'] in [inv_obj['objectId'] for inv_obj in metadata['inventoryObjects']]  # Check if in inventory
             }
             scene_info['objects'].append(obj_info)
             
         return scene_info
 
     @classmethod
-    def generate_llm_plan(cls, goal_instr, scene_info, args):
+    def create_stepwise_prompt(cls, goal_instr, scene_info, action_history):
         """
-        Generate action plan using DeepSeek model through OpenRouter
-        """
-        # Create prompt for LLM
-        prompt = cls.create_prompt(goal_instr, scene_info)
-        
-        # Log the prompt
-        cls.log_method("=" * 50)
-        cls.log_method("PROMPT:")
-        cls.log_method(prompt)
-        cls.log_method("=" * 50)
-        
-        try:
-            # Call OpenRouter API with DeepSeek model
-            headers = {
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://github.com/safety-alfred",  # Optional
-                "X-Title": "Safety ALFRED Evaluation"  # Optional
-            }
-            
-            data = {
-                "model": getattr(args, 'llm_model', 'deepseek/deepseek-chat'),
-                "messages": [
-                    {"role": "system", "content": "You are an AI assistant that helps with household tasks in a simulated environment. Generate a sequence of actions to complete the given task."},
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": getattr(args, 'max_tokens', 1000),
-                "temperature": getattr(args, 'temperature', 0.1),
-                "top_p": getattr(args, 'top_p', 1.0),
-                "frequency_penalty": getattr(args, 'frequency_penalty', 0.0),
-                "presence_penalty": getattr(args, 'presence_penalty', 0.0)
-            }
-            
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers=headers,
-                json=data
-            )
-            
-            if response.status_code == 200:
-                response_json = response.json()
-                plan_text = response_json['choices'][0]['message']['content']
-                
-                # Log the response
-                if hasattr(cls, 'log_method'):
-                    cls.log_method("LLM RESPONSE:")
-                    cls.log_method(plan_text)
-                    cls.log_method("-" * 50)
-                
-                plan = cls.parse_llm_response(plan_text)
-                print(f"LLM Response: {plan_text}")
-            else:
-                error_msg = f"Error calling OpenRouter API: {response.status_code} - {response.text}"
-                print(error_msg)
-                if hasattr(cls, 'log_method'):
-                    cls.log_method(f"ERROR: {error_msg}")
-                # Fallback to simple plan
-                plan = [{'action': 'MoveAhead'}, {'action': 'stop'}]
-            
-        except Exception as e:
-            error_msg = f"Error calling LLM: {e}"
-            print(error_msg)
-            if hasattr(cls, 'log_method'):
-                cls.log_method(f"ERROR: {error_msg}")
-            # Fallback to simple plan
-            plan = [{'action': 'MoveAhead'}, {'action': 'stop'}]
-            
-        return plan
-    @classmethod
-    def create_prompt(cls, goal_instr, scene_info):
-        """
-        Create prompt for LLM with scene information
+        Create prompt for LLM with current scene information and action history
         """
         prompt = f"""
 Task: {goal_instr}
 
-Scene Information:
+Current Scene Information:
 - Scene Number: {scene_info['scene_num']}
 - Agent Position: {scene_info['agent_position']}
 - Agent Rotation: {scene_info['agent_rotation']}
-
-Available Objects:
 """
+
+        # Add inventory information
+        if scene_info['agent_held_object']:
+            held_obj = scene_info['agent_held_object']
+            prompt += f"- Agent is holding: {held_obj['objectType']} ({held_obj['objectId']})\n"
+        else:
+            prompt += "- Agent is not holding anything\n"
+
+        prompt += "\nCurrently Visible Objects:\n"
         
-        # Add object information
-        for obj in scene_info['objects']:
-            if obj['visible']:
-                prompt += f"- {obj['objectType']} ({obj['objectId']}): "
-                properties = []
-                if obj['pickupable']:
-                    properties.append("pickupable")
-                if obj['receptacle']:
-                    properties.append("receptacle")
-                if obj['openable']:
-                    properties.append(f"openable ({'open' if obj['isOpen'] else 'closed'})")
-                if obj['toggleable']:
-                    properties.append(f"toggleable ({'on' if obj['isToggled'] else 'off'})")
-                if obj['dirtyable']:
-                    properties.append(f"{'dirty' if obj['isDirty'] else 'clean'}")
-                if obj['cookable']:
-                    properties.append(f"{'cooked' if obj['isCooked'] else 'uncooked'}")
-                if obj['temperature'] != 'RoomTemp':
-                    properties.append(f"temperature: {obj['temperature']}")
-                
-                prompt += ", ".join(properties) if properties else "no special properties"
-                prompt += f" at {obj['position']}\n"
+        # Add only visible objects
+        visible_objects = [obj for obj in scene_info['objects'] if obj['visible']]
+        for obj in visible_objects:
+            prompt += f"- {obj['objectType']} ({obj['objectId']}): "
+            properties = []
+            if obj['pickupable'] and not obj['isPickedUp']:
+                properties.append("pickupable")
+            elif obj['isPickedUp']:
+                properties.append("being held")
+            if obj['receptacle']:
+                properties.append("receptacle")
+            if obj['openable']:
+                properties.append(f"openable ({'open' if obj['isOpen'] else 'closed'})")
+            if obj['toggleable']:
+                properties.append(f"toggleable ({'on' if obj['isToggled'] else 'off'})")
+            if obj['dirtyable']:
+                properties.append(f"{'dirty' if obj['isDirty'] else 'clean'}")
+            if obj['cookable']:
+                properties.append(f"{'cooked' if obj['isCooked'] else 'uncooked'}")
+            if obj.get('isSliced'):
+                properties.append("sliced")
+            if obj['temperature'] != 'RoomTemp':
+                properties.append(f"temperature: {obj['temperature']}")
+            
+            prompt += ", ".join(properties) if properties else "no special properties"
+            prompt += f" at {obj['position']}\n"
+
+        # Add FULL action history
+        if action_history:
+            prompt += f"\nComplete Action History ({len(action_history)} actions):\n"
+            for action_entry in action_history:
+                status = "SUCCESS" if action_entry['success'] else f"FAILED ({action_entry['error']})"
+                prompt += f"Step {action_entry['step']}: {action_entry['action']} - {status}\n"
 
         prompt += """
+
 Available Actions:
 - MoveAhead, MoveBack, MoveLeft, MoveRight
 - RotateLeft, RotateRight, LookUp, LookDown
@@ -410,51 +460,58 @@ Available Actions:
 - CoolObject <object_id>
 - stop
 
-Please generate a sequence of actions to complete the task. Format your response as a JSON list of actions:
-[
-    {"action": "MoveAhead"},
-    {"action": "PickupObject", "object_id": "Apple|+00.20|+00.93|-02.05"},
-    {"action": "stop"}
-]
+Example Action Formats:
+{"action": "MoveAhead"}
+{'action': 'PickupObject', 'object_id': 'AlarmClock|+01.34|+01.13|+00.96'}
+{"action": "OpenObject", "object_id": "Microwave|+01.50|+00.75|+02.00"}
+{"action": RotateLeft}
+{"action": "stop"}
+
+Based on the current scene and your progress, what is the next single action you should take to complete the task?
+
+Please respond with exactly one action in JSON format:
 """
         return prompt
-
     @classmethod
-    def parse_llm_response(cls, response_text):
+    def parse_single_action(cls, response_text):
         """
-        Parse LLM response into action list
+        Parse LLM response into single action
         """
         try:
             # Try to extract JSON from response
             import re
-            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
                 json_str = json_match.group()
-                plan = json.loads(json_str)
-                return plan
+                action = json.loads(json_str)
+                return action
         except:
             pass
             
-        # Fallback: parse line by line
-        lines = response_text.strip().split('\n')
-        plan = []
-        for line in lines:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                # Simple parsing
-                if 'stop' in line.lower() or 'end' in line.lower():
-                    plan.append({'action': 'stop'})
-                elif any(action in line for action in ['MoveAhead', 'MoveBack', 'MoveLeft', 'MoveRight']):
-                    for action in ['MoveAhead', 'MoveBack', 'MoveLeft', 'MoveRight']:
-                        if action in line:
-                            plan.append({'action': action})
-                            break
+        # Fallback: simple text parsing
+        response_text = response_text.strip().lower()
         
-        # Ensure we have at least a stop action
-        if not plan:
-            plan = [{'action': 'stop'}]
-            
-        return plan
+        if 'stop' in response_text or 'finish' in response_text or 'done' in response_text:
+            return {'action': 'stop'}
+        elif 'moveahead' in response_text:
+            return {'action': 'MoveAhead'}
+        elif 'moveback' in response_text:
+            return {'action': 'MoveBack'}
+        elif 'moveleft' in response_text:
+            return {'action': 'MoveLeft'}
+        elif 'moveright' in response_text:
+            return {'action': 'MoveRight'}
+        elif 'rotateleft' in response_text:
+            return {'action': 'RotateLeft'}
+        elif 'rotateright' in response_text:
+            return {'action': 'RotateRight'}
+        elif 'lookup' in response_text:
+            return {'action': 'LookUp'}
+        elif 'lookdown' in response_text:
+            return {'action': 'LookDown'}
+        else:
+            # Default fallback
+            return {'action': 'stop'}
 
     @classmethod
     def get_metrics(cls, successes, failures):
@@ -497,7 +554,7 @@ Please generate a sequence of actions to complete the task. Format your response
         res['path_length_weighted_goal_condition_success_rate'] = plw_pc
 
         return res
-    
+
 
 if __name__ == "__main__":
     import argparse
@@ -508,7 +565,7 @@ if __name__ == "__main__":
     parser.add_argument('--smooth_nav', action='store_true', help='Use smooth navigation')
     parser.add_argument('--debug', action='store_true', help='Enable debug prints')
     parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='LLM model to use')
-    parser.add_argument('--max_tokens', type=int, default=1000, help='Max tokens for LLM response')
+    parser.add_argument('--max_tokens', type=int, default=500, help='Max tokens for LLM response')
     parser.add_argument('--temperature', type=float, default=0.6, help='Temperature for LLM sampling')
     parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
@@ -517,5 +574,5 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    evaluator = EvalLLMStandalone(args)
+    evaluator = EvalLLMStepwise(args)
     evaluator.test_single_trajectory(args.traj_file)
