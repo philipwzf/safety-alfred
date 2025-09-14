@@ -3,13 +3,12 @@ import sys
 # Add project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
-breakpoint()
 import json
 import numpy as np
-from PIL import Image
 from datetime import datetime
 from env.thor_env import ThorEnv
 import requests
+API_KEY = os.getenv("API_KEY")
 
 class EvalLLMStandalone:
     '''
@@ -22,10 +21,18 @@ class EvalLLMStandalone:
         self.manager = manager
 
         # Initialize OpenRouter client for DeepSeek
-        self.openrouter_api_key = getattr(args, 'openrouter_api_key', None)
-        if not self.openrouter_api_key:
-            self.openrouter_api_key = "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"
         self.openrouter_base_url = "https://openrouter.ai/api/v1"
+        
+        # Setup simple logging
+        os.makedirs('logs', exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.log_file = f"logs/llm_eval_{timestamp}.txt"
+        print(f"Logging to: {self.log_file}")
+
+    def log(self, message):
+        """Simple logging to text file"""
+        with open(self.log_file, 'a', encoding='utf-8') as f:
+            f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
 
     def test_single_trajectory(self, traj_file_path=None):
         """
@@ -58,8 +65,8 @@ class EvalLLMStandalone:
             print(f"Task description: {traj_data['turk_annotations']['anns'][0]['task_desc']}")
             
             # Run evaluation on single trajectory
-            self.evaluate(env, None, 0, None, traj_data, self.args, lock, successes, failures, results)
-            
+            self.evaluate(env, 0, traj_data, self.args, lock, successes, failures, results)
+
         except Exception as e:
             print(f"Error during evaluation: {e}")
             import traceback
@@ -80,23 +87,41 @@ class EvalLLMStandalone:
         """
         Setup scene from trajectory data
         """
+        # scene setup
+        scene_num = traj_data['scene']['scene_num']
+        object_poses = traj_data['scene']['object_poses']
+        dirty_and_empty = traj_data['scene']['dirty_and_empty']
+        object_toggles = traj_data['scene']['object_toggles']
+
+        scene_name = 'FloorPlan%d' % scene_num
         # reset env
-        env.reset(traj_data['scene'])
+        env.reset(scene_name)
         
         # setup initial conditions
-        env.restore_scene(traj_data['scene'], 0, reward_type)
+        env.restore_scene(object_poses, object_toggles, dirty_and_empty)
+
+        # initialize to start position
+        env.step(dict(traj_data['scene']['init_action']))
 
         # print goal instr
         print("Task: %s" % (traj_data['turk_annotations']['anns'][r_idx]['task_desc']))
 
-    def evaluate(self, env, model, r_idx, resnet, traj_data, args, lock, successes, failures, results):
+        # setup task for reward
+        env.set_task(traj_data, args, reward_type=reward_type)
+
+    def evaluate(self, env, r_idx, traj_data, args, lock, successes, failures, results):
         # setup scene
         reward_type = 'dense'
         self.setup_scene(env, traj_data, r_idx, args, reward_type=reward_type)
 
         # goal instruction
         goal_instr = traj_data['turk_annotations']['anns'][r_idx]['task_desc']
-        
+
+        # Log task info
+        self.log(f"Task: {goal_instr}")
+        self.log(f"Scene: {traj_data['scene']['scene_num']}")
+        self.log(f"Objects: {list(traj_data['scene']['object_poses'])}")
+
         # Get scene information for LLM
         scene_info = self.get_scene_info(env, traj_data)
         
@@ -262,10 +287,17 @@ class EvalLLMStandalone:
         # Create prompt for LLM
         prompt = cls.create_prompt(goal_instr, scene_info)
         
+        # Log the prompt
+        if hasattr(cls, 'log_method'):
+            cls.log_method("=" * 50)
+            cls.log_method("PROMPT:")
+            cls.log_method(prompt)
+            cls.log_method("=" * 50)
+        
         try:
             # Call OpenRouter API with DeepSeek model
             headers = {
-                "Authorization": f"Bearer {getattr(args, 'openrouter_api_key', '')}",
+                "Authorization": f"Bearer {API_KEY}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "https://github.com/safety-alfred",  # Optional
                 "X-Title": "Safety ALFRED Evaluation"  # Optional
@@ -293,20 +325,32 @@ class EvalLLMStandalone:
             if response.status_code == 200:
                 response_json = response.json()
                 plan_text = response_json['choices'][0]['message']['content']
+                
+                # Log the response
+                if hasattr(cls, 'log_method'):
+                    cls.log_method("LLM RESPONSE:")
+                    cls.log_method(plan_text)
+                    cls.log_method("-" * 50)
+                
                 plan = cls.parse_llm_response(plan_text)
                 print(f"LLM Response: {plan_text}")
             else:
-                print(f"Error calling OpenRouter API: {response.status_code} - {response.text}")
+                error_msg = f"Error calling OpenRouter API: {response.status_code} - {response.text}"
+                print(error_msg)
+                if hasattr(cls, 'log_method'):
+                    cls.log_method(f"ERROR: {error_msg}")
                 # Fallback to simple plan
                 plan = [{'action': 'MoveAhead'}, {'action': 'stop'}]
             
         except Exception as e:
-            print(f"Error calling LLM: {e}")
+            error_msg = f"Error calling LLM: {e}"
+            print(error_msg)
+            if hasattr(cls, 'log_method'):
+                cls.log_method(f"ERROR: {error_msg}")
             # Fallback to simple plan
             plan = [{'action': 'MoveAhead'}, {'action': 'stop'}]
             
         return plan
-
     @classmethod
     def create_prompt(cls, goal_instr, scene_info):
         """
@@ -459,14 +503,14 @@ if __name__ == "__main__":
     parser.add_argument('--max_fails', type=int, default=5, help='Maximum consecutive action fails before aborting')
     parser.add_argument('--smooth_nav', action='store_true', help='Use smooth navigation')
     parser.add_argument('--debug', action='store_true', help='Enable debug prints')
-    parser.add_argument('--openrouter_api_key', type=str, default=None, help='OpenRouter API key for LLM access')
     parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='LLM model to use')
     parser.add_argument('--max_tokens', type=int, default=1000, help='Max tokens for LLM response')
-    parser.add_argument('--temperature', type=float, default=0.1, help='Temperature for LLM sampling')
+    parser.add_argument('--temperature', type=float, default=0.6, help='Temperature for LLM sampling')
     parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
     parser.add_argument('--presence_penalty', type=float, default=0.0, help='Presence penalty for LLM')
-    
+    parser.add_argument('--reward_config', default='models/config/rewards.json')
+
     args = parser.parse_args()
     
     evaluator = EvalLLMStandalone(args)
