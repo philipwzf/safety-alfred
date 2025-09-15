@@ -1,154 +1,24 @@
-# ALFRED
+# Safety-ALFRED
 
-python models/eval/eval_llm.py \
-    --task_path data/json_2.1.0/train/look_at_obj_in_light-AlarmClock-None-DeskLamp-305/trial_T20190908_082723_323728/traj_data.json \
-    --openrouter_api_key $OPENROUTER_API_KEY \
-    --debug
 ## Quickstart
 
 Clone repo:
 ```bash
-$ git clone https://github.com/askforalfred/alfred.git alfred
-$ export ALFRED_ROOT=$(pwd)/alfred
+$ git clone git@github.com:philipwzf/safety-alfred.git
 ```
 
-Install requirements:
+Install requirements(conda):
 ```bash
-$ virtualenv -p $(which python3) --system-site-packages alfred_env # or whichever package manager you prefer
-$ source alfred_env/bin/activate
-
-$ cd $ALFRED_ROOT
-$ pip install --upgrade pip
+$ conda create -n ai2thor python==3.10
+$ conda activate ai2thor
 $ pip install -r requirements.txt
-```
-
-Download Trajectory JSONs and Resnet feats (~17GB):
-```bash
-$ cd $ALFRED_ROOT/data
-$ sh download_data.sh json_feat
 ```
 
 Train models:
 ```bash
-$ cd $ALFRED_ROOT
-$ python models/train/train_seq2seq.py --data data/json_feat_2.1.0 --model seq2seq_im_mask --dout exp/model:{model},name:pm_and_subgoals_01 --splits data/splits/oct21.json --batch 8 --pm_aux_loss_wt 0.1 --subgoal_aux_loss_wt 0.1
+$ python models/eval/eval_llm_step.py \
+    --traj_file data/json_2.1.0/train/look_at_obj_in_light-AlarmClock-None-DeskLamp-305/trial_T20190908_082723_323728/traj_data.json --debug
 ```
-
-## More Info 
-
-- [**Dataset**](data/): Downloading full dataset, Folder structure, JSON structure.
-- [**Models**](models/): Training and Evaluation, File structure, Pre-trained models.
-- [**Data Generation**](gen/): Generation, Replay Checks, Data Augmentation (high-res, depth, segementation masks etc).
-- [**Errata**](models/ERRATA.md): Updated numbers for Goto subgoal evaluation.
-- [**THOR 2.1.0 Docs**](https://allenai.github.io/ai2thor-v2.1.0-documentation/installation): Deprecated documentation from Ai2-THOR 2.1.0 release.
-- [**FAQ**](doc/FAQ.md): Frequently Asked Questions. 
-
-## SOTA Models
-
-Open-source models that outperform the Seq2Seq baselines from ALFRED:  
-
-<b> Context-Aware Planning and Environment-Aware Memory for Instruction Following Embodied Agents </b>
-<br>
-Byeonghwi Kim, Jinyeon Kim, Yuyeong Kim, Cheolhong Min, Jonghyun Choi
-<br>
-<a href="https://arxiv.org/pdf/2308.07241.pdf"> Paper</a>, <a href="https://github.com/snumprlab/capeam"> Code </a>
-
-<b> Multi-Level Compositional Reasoning for Interactive Instruction Following </b>
-<br>
-Suvaansh Bhambri*, Byeonghwi Kim*, Jonghyun Choi
-<br>
-<a href="https://arxiv.org/pdf/2308.09387.pdf"> Paper</a>, <a href="https://github.com/yonseivnl/mcr-agent"> Code </a>
-
-<b> Agent with the Big Picture: Perceiving Surroundings for Interactive Instruction Following </b>
-<br>
-Byeonghwi Kim, Suvaansh Bhambri, Kunal Pratap Singh, Roozbeh Mottaghi, Jonghyun Choi
-<br>
-<a href="https://embodied-ai.org/papers/Agent-with-the-Big-Picture.pdf"> Paper</a>, <a href="https://github.com/snumprlab/abp"> Code </a> 
-
-<b> FILM: Following Instructions in Language with Modular Methods </b>
-<br>
-So Yeon Min, Devendra Singh Chaplot, Pradeep Ravikumar, Yonatan Bisk, Ruslan Salakhutdinov
-<br>
-<a href="https://arxiv.org/pdf/2110.07342.pdf"> Paper</a>, <a href="https://github.com/soyeonm/FILM"> Code </a>
-
-<b> A Persistent Spatial Semantic Representation for High-level Natural Language Instruction Execution </b>
-<br>
-Valts Blukis, Chris Paxton, Dieter Fox, Animesh Garg, Yoav Artzi
-<br>
-<a href="https://arxiv.org/pdf/2107.05612.pdf"> Paper</a>, <a href="https://github.com/valtsblukis/hlsm"> Code </a>
-
-<b> Hierarchical Task Learning from Language Instructions with Unified Transformers and Self-Monitoring </b>
-<br>
-Yichi Zhang, Joyce Chai
-<br>
-<a href="https://aclanthology.org/2021.findings-acl.368/"> Paper</a>, <a href="https://github.com/594zyc/HiTUT"> Code </a>
-
-<b> Episodic Transformer for Vision-and-Language Navigation </b>
-<br>
-Alexander Pashevich, Cordelia Schmid, Chen Sun
-<br>
-<a href="https://arxiv.org/pdf/2105.06453.pdf"> Paper</a>, <a href="https://github.com/alexpashevich/E.T."> Code </a>
-
-<b> MOCA: A Modular Object-Centric Approach for Interactive Instruction Following </b>
-<br>
-Kunal Pratap Singh*, Suvaansh Bhambri*, Byeonghwi Kim*, Roozbeh Mottaghi, Jonghyun Choi
-<br>
-<a href="https://arxiv.org/abs/2012.03208"> Paper</a>, <a href="https://github.com/gistvision/moca"> Code </a>  
-
-<b> Embodied BERT: A Transformer Model for Embodied, Language-guided Visual Task Completion </b>
-<br>
-Alessandro Suglia, Qiaozi Gao, Jesse Thomason, Govind Thattai, Gaurav Sukhatme  
-<a href="https://arxiv.org/abs/2108.04927">Paper</a>, <a href="https://github.com/amazon-research/embert"> Code </a>
-
-Contact [Mohit](https://mohitshridhar.com/) to add your model here. 
-
-## Prerequisites
-
-- Python 3
-- PyTorch 1.1.0
-- Torchvision 0.3.0
-- AI2THOR 2.1.0
-
-See [requirements.txt](requirements.txt) for all prerequisites
-
-## Hardware 
-
-Tested on:
-- **GPU** - GTX 1080 Ti (12GB)
-- **CPU** - Intel Xeon (Quad Core)
-- **RAM** - 16GB
-- **OS** - Ubuntu 16.04
-
-
-## Leaderboard
-
-⚠️ **Update (Apr 2025)**: As of April 2025, the Ai2 leaderboard has been deprecated. Please see the instructions below on email submissions.
-
-Run your model on test seen and unseen sets, and create an action-sequence dump of your agent:
-
-```bash
-$ cd $ALFRED_ROOT
-$ python models/eval/leaderboard.py --model_path <model_path>/model.pth --model models.model.seq2seq_im_mask --data data/json_feat_2.1.0 --gpu --num_threads 5
-```
-
-This will create a JSON file, e.g. `task_results_20191218_081448_662435.json`, inside the `<model_path>` folder. Email this file to [askforalfred@googlegroups.com](mailto:askforalfred@googlegroups.com), preferrably through a storage link on a platform like Google Drive, Dropbox etc.
-
-The results will be available at [askforalfred.com/leaderboard/leaderboard.html](https://askforalfred.com/leaderboard/leaderboard.html). 
-
-**Rules:** 
-1. You are only allowed to use **RGB** and **language instructions (goal & step-by-step)** as input for your agents. You **cannot use additional depth, mask, metadata info etc.** from the simulator on Test Seen and Test Unseen scenes. However, during training you are allowed to use additional info for auxiliary losses etc.
-2. During evaluation, agents are restricted to `max_steps=1000` and `max_fails=10`. Do not change these settings in the [leaderboard script](https://github.com/askforalfred/alfred/blob/master/models/eval/leaderboard.py); these modifications will not be reflected in the evaluation server.
-3. :exclamation:Do not spam the leaderboard with repeated submissions (under different email accounts) in order to optimize on the test set. Fine-tuning should be done only on the validation set, NOT on the leaderboard test set. 
-4. Pick a legible model name for the submission. Just "baseline" is not very descriptive.
-5. All submissions must be attempts to solve the ALFRED dataset.
-6. Answer the following questions in the description: a. Did you use additional sensory information from THOR as input, eg: depth, segmentation masks, class masks, panoramic images etc. during test-time? If so, please report them. b. Did you use the alignments between step-by-step instructions and expert action-sequences for training or testing? (no by default; the instructions are serialized into a single sentence)
-7. Share who you are: provide a team name and affiliation. 
-8. _(Optional)_ Share how you solved it: if possible, share information about how the task was solved. Link an academic paper or code repository if public.
-9. Only submit your own work: you may evaluate any model on the validation set, but must only submit your own work for evaluation against the test set.
-
-**Submissions**:  
-  
-Only one submission is allowed every 7 days. All submissions will be made public. Please do not create anonymous emails for multiple submissions. Use the val set to iterate on your agent.
 
 ## Docker Setup
 
@@ -263,25 +133,3 @@ If you find the dataset or code useful, please cite:
 
 MIT License
 
-## Change Log
-
-14/10/2020:
-- Added [errata](models/ERRATA.md) for `Goto` subgoal evaluation. 
-
-28/10/2020:
-- Added `--use_templated_goals` option to train with templated goals instead of human-annotated goal descriptions.
-
-26/10/2020:
-- Fixed missing stop-frame in Modeling Quickstart dataset (`json_feat_2.1.0.zip`). 
-
-07/04/2020:
-- Updated download links. Switched from Google Cloud to AWS. Old download links will be deactivated.
-
-
-28/03/2020:
-- Updated the mask-interaction API to use IoU scores instead of max pixel count for selecting objects.
-- Results table in the paper will be updated with new numbers.
-
-## Contact
-
-Questions or issues? Contact [askforalfred@googlegroups.com](askforalfred@googlegroups.com)
