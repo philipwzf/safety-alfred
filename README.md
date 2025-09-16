@@ -16,100 +16,28 @@ $ pip install -r requirements.txt
 
 Train models:
 ```bash
+# Setup API_KEY (default is openrouter api)
+$ export API_KEY="your_api_key_here"
 $ python models/eval/eval_llm_step.py \
     --traj_file data/json_2.1.0/train/look_at_obj_in_light-AlarmClock-None-DeskLamp-305/trial_T20190908_082723_323728/traj_data.json --debug
 ```
 
-## Docker Setup
 
-Install [Docker](https://docs.docker.com/engine/install/ubuntu/) and [NVIDIA Docker](https://github.com/NVIDIA/nvidia-docker#ubuntu-160418042004-debian-jessiestretchbuster). 
-
-Modify [docker_build.py](scripts/docker_build.py) and [docker_run.py](scripts/docker_run.py) to your needs.
-
-#### Build 
-
-Build the image:
-
+## Headless Server
 ```bash
-$ python scripts/docker_build.py 
-```
+## Setup Xvfb for AI2-THOR
+# Start Xvfb on display :99
+Xvfb :99 -screen 0 1024x768x24 -ac +extension GLX +extension RANDR +extension RENDER &
+export DISPLAY=:99
 
-#### Run (Local)
-
-For local machines:
-
-```bash
-$ python scripts/docker_run.py
- 
-  source ~/alfred_env/bin/activate
-  cd $ALFRED_ROOT
-```
-
-#### Run (Headless)
-
-For headless VMs and Cloud-Instances:
-
-```bash
-$ python scripts/docker_run.py --headless 
-
-  # inside docker
-  tmux new -s startx  # start a new tmux session
-
-  # start nvidia-xconfig
-  sudo nvidia-xconfig -a --use-display-device=None --virtual=1280x1024
-
-  # start X server on DISPLAY 0
-  # single X server should be sufficient for multiple instances of THOR
-  sudo python ~/alfred/scripts/startx.py 0  # if this throws errors e.g "(EE) Server terminated with error (1)" or "(EE) already running ..." try a display > 0
-
-  # detach from tmux shell
-  # Ctrl+b then d
-
-  # source env
-  source ~/alfred_env/bin/activate
-  
-  # set DISPLAY variable to match X server
-  export DISPLAY=:0
-
-  # check THOR
-  cd $ALFRED_ROOT
-  python scripts/check_thor.py
-
+# Check if thor works
+python scrips/check_thor.py
   ###############
   ## (300, 300, 3)
   ## Everything works!!!
+
 ```
-
-You might have to modify `X_DISPLAY` in [gen/constants.py](gen/constants.py) depending on which display you use.
-
-## Cloud Instance
-
-ALFRED can be setup on headless machines like AWS or GoogleCloud instances. 
-The main requirement is that you have access to a GPU machine that supports OpenGL rendering. Run [startx.py](scripts/startx.py) in a tmux shell:
-```bash
-# start tmux session
-$ tmux new -s startx 
-
-# start X server on DISPLAY 0
-# single X server should be sufficient for multiple instances of THOR
-$ sudo python $ALFRED_ROOT/scripts/startx.py 0  # if this throws errors e.g "(EE) Server terminated with error (1)" or "(EE) already running ..." try a display > 0
-
-# detach from tmux shell
-# Ctrl+b then d
-
-# set DISPLAY variable to match X server
-$ export DISPLAY=:0
-
-# check THOR
-$ cd $ALFRED_ROOT
-$ python scripts/check_thor.py
-
-###############
-## (300, 300, 3)
-## Everything works!!!
-```
-
-You might have to modify `X_DISPLAY` in [gen/constants.py](gen/constants.py) depending on which display you use.
+**Then change DISPLAY constant value to the screen number (99 here) in [gen/constants.py](gen/constants.py)**
 
 Also, checkout this guide: [Setting up THOR on Google Cloud](https://medium.com/@etendue2013/how-to-run-ai2-thor-simulation-fast-with-google-cloud-platform-gcp-c9fcde213a4a)
 
