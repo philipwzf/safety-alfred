@@ -24,7 +24,7 @@ class EvalLLM:
         # Initialize LLM agent
         self.llm_agent = LLMAgent(args)
         self.llm_agent.set_log_method(self.log)
-        self.logging = True
+        self.logging = args.debug if hasattr(args, 'debug') else False
         
         # Setup simple logging
         os.makedirs('logs', exist_ok=True)
@@ -352,11 +352,198 @@ class EvalLLM:
         return res
     
 
+    def get_trajectory_files(self, data_dir, split):
+        """Get all trajectory files for a given split"""
+        import glob
+        pattern = f"{data_dir}/{split}/*/trial_*/traj_data.json"
+        return glob.glob(pattern)
+
+    def test_batch(self, data_dir="data/json_2.1.0", split="valid_seen", num_runs=5):
+        """
+        Test evaluation on batch of trajectories with multiple runs
+        """
+        print(f"Starting batch evaluation on {split} split with {num_runs} runs per trajectory")
+        
+        # Get all trajectory files for the split
+        traj_files = self.get_trajectory_files(data_dir, split)
+        print(f"Found {len(traj_files)} trajectory files")
+        
+        if not traj_files:
+            print(f"No trajectory files found in {data_dir}/{split}")
+            return
+        
+        # Initialize batch tracking
+        all_successes = []
+        all_failures = []
+        batch_results = {}
+        
+        # Create batch log file
+        batch_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        batch_log_file = f"logs/batch_eval_{split}_{batch_timestamp}.txt"
+        
+        # Simple lock class for single-threaded use
+        class SimpleLock:
+            def acquire(self): pass
+            def release(self): pass
+        
+        lock = SimpleLock()
+        
+        # Track progress
+        total_evaluations = len(traj_files) * num_runs
+        current_eval = 0
+        
+        print(f"Running {total_evaluations} total evaluations...")
+        
+        for traj_idx, traj_file in enumerate(traj_files):
+            print(f"\n{'='*60}")
+            print(f"Processing trajectory {traj_idx + 1}/{len(traj_files)}: {traj_file}")
+            
+            try:
+                # Load trajectory data
+                with open(traj_file, 'r') as f:
+                    traj_data = json.load(f)
+                    
+                # Extract task info
+                task_id = traj_data['task_id']
+                num_annotations = len(traj_data['turk_annotations']['anns'])
+                
+                # Run multiple times for this trajectory
+                for run_idx in range(num_runs):
+                    current_eval += 1
+                    print(f"\nRun {run_idx + 1}/{num_runs} for {task_id} ({current_eval}/{total_evaluations})")
+                    
+                    # Use different annotations for variety if available
+                    r_idx = run_idx % num_annotations
+                    goal_desc = traj_data['turk_annotations']['anns'][r_idx]['task_desc']
+                    print(f"Goal: {goal_desc}")
+                    
+                    # Create fresh environment for each run
+                    env = ThorEnv()
+                    
+                    try:
+                        # Run evaluation
+                        run_successes = []
+                        run_failures = []
+                        run_results = {}
+                        
+                        self.evaluate(env, r_idx, traj_data, self.args, lock, 
+                                    run_successes, run_failures, run_results)
+                        
+                        # Add run info to results
+                        for entry in run_successes + run_failures:
+                            entry['run_idx'] = run_idx
+                            entry['traj_file'] = traj_file
+                            entry['total_runs'] = num_runs
+                        
+                        # Accumulate results
+                        all_successes.extend(run_successes)
+                        all_failures.extend(run_failures)
+                        
+                        # Log run result
+                        run_success = len(run_successes) > 0
+                        with open(batch_log_file, 'a', encoding='utf-8') as f:
+                            f.write(f"[{datetime.now().strftime('%H:%M:%S')}] "
+                                f"Traj {traj_idx+1}/{len(traj_files)}, "
+                                f"Run {run_idx+1}/{num_runs}, "
+                                f"Task: {task_id}, "
+                                f"Success: {run_success}, "
+                                f"Goal: {goal_desc}\n")
+                        
+                    except Exception as e:
+                        print(f"Error in run {run_idx + 1}: {e}")
+                        with open(batch_log_file, 'a', encoding='utf-8') as f:
+                            f.write(f"[{datetime.now().strftime('%H:%M:%S')}] "
+                                f"ERROR in run {run_idx+1}: {e}\n")
+                    finally:
+                        env.stop()
+                    
+                    # Print progress every 10 evaluations
+                    if current_eval % 10 == 0:
+                        current_sr = len(all_successes) / (len(all_successes) + len(all_failures)) if (len(all_successes) + len(all_failures)) > 0 else 0
+                        print(f"Progress: {current_eval}/{total_evaluations} ({current_eval/total_evaluations*100:.1f}%) - Current SR: {current_sr:.3f}")
+            
+            except Exception as e:
+                print(f"Error loading trajectory {traj_file}: {e}")
+                continue
+        
+        # Calculate final batch results
+        print(f"\n{'='*60}")
+        print("BATCH EVALUATION COMPLETE")
+        print(f"{'='*60}")
+        
+        if all_successes or all_failures:
+            batch_results = self.get_metrics(all_successes, all_failures)
+            
+            # Print comprehensive results
+            print(f"\nFINAL RESULTS ({split} split, {num_runs} runs per trajectory):")
+            print(f"Total Evaluations: {len(all_successes) + len(all_failures)}")
+            print(f"Total Trajectories: {len(traj_files)}")
+            print(f"Successes: {len(all_successes)}")
+            print(f"Failures: {len(all_failures)}")
+            
+            if batch_results:
+                print(f"\nMETRICS:")
+                print(f"Success Rate (SR): {batch_results['success']['success_rate']:.3f}")
+                print(f"Goal Condition Success Rate (GC): {batch_results['goal_condition_success']['goal_condition_success_rate']:.3f}")
+                print(f"Path Length Weighted SR: {batch_results['path_length_weighted_success_rate']:.3f}")
+                print(f"Path Length Weighted GC: {batch_results['path_length_weighted_goal_condition_success_rate']:.3f}")
+            
+            # Save detailed results to JSON
+            results_file = f"logs/batch_results_{split}_{batch_timestamp}.json"
+            detailed_results = {
+                'split': split,
+                'num_runs': num_runs,
+                'total_trajectories': len(traj_files),
+                'total_evaluations': len(all_successes) + len(all_failures),
+                'timestamp': batch_timestamp,
+                'metrics': batch_results,
+                'successes': all_successes,
+                'failures': all_failures,
+                'args': vars(self.args)
+            }
+            
+            with open(results_file, 'w') as f:
+                json.dump(detailed_results, f, indent=2)
+            
+            print(f"\nDetailed results saved to: {results_file}")
+            print(f"Log file saved to: {batch_log_file}")
+            
+            # Task type breakdown
+            self.print_task_type_breakdown(all_successes, all_failures)
+            
+        else:
+            print("No evaluations completed successfully")
+        
+        return all_successes, all_failures, batch_results
+
+    def print_task_type_breakdown(self, successes, failures):
+        """Print success rates broken down by task type"""
+        from collections import defaultdict
+        
+        task_stats = defaultdict(lambda: {'successes': 0, 'failures': 0})
+        
+        for entry in successes:
+            task_type = entry.get('type', 'unknown')
+            task_stats[task_type]['successes'] += 1
+        
+        for entry in failures:
+            task_type = entry.get('type', 'unknown')
+            task_stats[task_type]['failures'] += 1
+        
+        if task_stats:
+            print(f"\nTASK TYPE BREAKDOWN:")
+            print(f"{'Task Type':<35} {'Success':<10} {'Total':<10} {'Rate':<10}")
+            print("-" * 65)
+            
+            for task_type, stats in sorted(task_stats.items()):
+                total = stats['successes'] + stats['failures']
+                rate = stats['successes'] / total if total > 0 else 0
+                print(f"{task_type:<35} {stats['successes']:<10} {total:<10} {rate:<10.3f}")
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--traj_file', type=str, default=None, help='Path to single trajectory JSON file for testing')
-    parser.add_argument('--max_steps', type=int, default=100, help='Maximum steps per episode')
+    parser.add_argument('--max_steps', type=int, default=50, help='Maximum steps per episode')
     parser.add_argument('--max_fails', type=int, default=5, help='Maximum consecutive action fails before aborting')
     parser.add_argument('--smooth_nav', action='store_true', help='Use smooth navigation')
     parser.add_argument('--debug', action='store_true', help='Enable debug prints')
@@ -367,8 +554,16 @@ if __name__ == "__main__":
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
     parser.add_argument('--presence_penalty', type=float, default=0.0, help='Presence penalty for LLM')
     parser.add_argument('--reward_config', default='models/config/rewards.json')
+    parser.add_argument('--batch', action='store_true', help='Run batch evaluation')
+    parser.add_argument('--split', type=str, default='valid_seen', help='Data split to evaluate')
+    parser.add_argument('--data_dir', type=str, default='data/json_2.1.0', help='Data directory')
+    parser.add_argument('--num_runs', type=int, default=5, help='Number of runs per trajectory')
+    
 
     args = parser.parse_args()
     
     evaluator = EvalLLM(args)
-    evaluator.test_single_trajectory(args.traj_file)
+    if args.batch:
+        evaluator.test_batch(args.data_dir, args.split, args.num_runs)
+    else:
+        evaluator.test_single_trajectory(args.traj_file)

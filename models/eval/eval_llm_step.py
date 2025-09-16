@@ -187,7 +187,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--traj_file', type=str, default=None, help='Path to single trajectory JSON file for testing')
-    parser.add_argument('--max_steps', type=int, default=100, help='Maximum steps per episode')
+    parser.add_argument('--max_steps', type=int, default=50, help='Maximum steps per episode')
     parser.add_argument('--max_fails', type=int, default=5, help='Maximum consecutive action fails before aborting')
     parser.add_argument('--smooth_nav', action='store_true', help='Use smooth navigation')
     parser.add_argument('--debug', action='store_true', help='Enable debug prints')
@@ -198,8 +198,16 @@ if __name__ == "__main__":
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
     parser.add_argument('--presence_penalty', type=float, default=0.0, help='Presence penalty for LLM')
     parser.add_argument('--reward_config', default='models/config/rewards.json')
+    parser.add_argument('--batch', action='store_true', help='Run batch evaluation')
+    parser.add_argument('--split', type=str, default='valid_seen', help='Data split to evaluate')
+    parser.add_argument('--data_dir', type=str, default='data/json_2.1.0', help='Data directory')
+    parser.add_argument('--num_runs', type=int, default=5, help='Number of runs per trajectory')
+    
 
     args = parser.parse_args()
     
     evaluator = EvalLLMStepwise(args)
-    evaluator.test_single_trajectory(args.traj_file)
+    if args.batch:
+        evaluator.test_batch(args.data_dir, args.split, args.num_runs)
+    else:
+        evaluator.test_single_trajectory(args.traj_file)
