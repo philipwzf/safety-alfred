@@ -50,14 +50,14 @@ Generate subgoals for the given task using only the provided objects. Format you
         subgoals = self.query_llm(SUBGOAL_PROMPT, user_prompt)
         return subgoals
 
-    def generate_plan(self, subgoals, scene_info):
+    def generate_plan(self, subgoals, scene_info, goto=False):
         """
         Generate action plan from subgoals and scene information
         """
-        from models.prompts import ACTION_SEQ_PROMPT
+        from models.prompts import ACTION_SEQ_PROMPT, ACTION_SEQ_PROMPT_GOTO
         
         # Create prompt for LLM
-        user_prompt = self.create_prompt(subgoals, scene_info)
+        user_prompt = self.create_prompt(subgoals, scene_info, goto=goto)
         
         # Log the prompt
         self.log("=" * 50)
@@ -66,6 +66,8 @@ Generate subgoals for the given task using only the provided objects. Format you
         self.log("=" * 50)
 
         system_prompt = ACTION_SEQ_PROMPT
+        if goto:
+            system_prompt = ACTION_SEQ_PROMPT_GOTO
         plan_text = self.query_llm(system_prompt, user_prompt)
         plan = self.parse_llm_response(plan_text)
         
@@ -75,7 +77,7 @@ Generate subgoals for the given task using only the provided objects. Format you
         
         return plan
     
-    def create_prompt(self, subgoals_json, scene_info):
+    def create_prompt(self, subgoals_json, scene_info, goto=False):
         """
         Create prompt for LLM with subgoals and scene information
         """
@@ -102,13 +104,14 @@ Generate subgoals for the given task using only the provided objects. Format you
         prompt += "\n## Relevant Objects in Scene:\n"
         prompt += self.format_objects_for_prompt(scene_info['objects'], filter_visible=False)
             
-        prompt += """
+        if goto:
+            prompt += """
 ## Available Actions:
-- Navigation: MoveAhead, MoveBack, MoveLeft, MoveRight, RotateLeft, RotateRight, LookUp, LookDown
-- Object Interaction: PickupObject <object_id>, PutObject <object_id>
+- Navigation: GotoLocation <object_id>
+- Object Interaction: PickupObject <object_id>, PutObject <object_id, object_id>
 - Container Actions: OpenObject <object_id>, CloseObject <object_id>
 - Appliance Actions: ToggleObjectOn <object_id>, ToggleObjectOff <object_id>
-- Object Modification: SliceObject <object_id>, CleanObject <object_id>, HeatObject <object_id>, CoolObject <object_id>
+- Object Modification: SliceObject <object_id>
 - Task Completion: stop
 
 ## Planning Rules:
@@ -119,6 +122,42 @@ Generate subgoals for the given task using only the provided objects. Format you
 5. **Exact object IDs** - Use the exact object IDs from the subgoals
 6. **Find objects first** - Navigate around to find objects if needed
 7. **Complete all subgoals** - Don't stop until all subgoals are achieved
+8. **PutObject requires two object_ids** - the object being placed and the receptacle
+
+## Output Format:
+Generate a JSON array of actions that will achieve the subgoals in order:
+[
+    {"action": "GotoLocation", "object_id": "AlarmClock|+01.65|+00.80|-01.28"},
+    {"action": "PickupObject", "object_id": "AlarmClock|+01.65|+00.80|-01.28"},
+    {"action": "GotoLocation", "object_id": "DeskLamp|-01.31|+01.23|-00.99"},
+    {"action": "ToggleObjectOn", "object_id": "DeskLamp|-01.31|+01.23|-00.99"},
+    {"action": "GotoLocation", "object_id": "CounterTop|+02.10|+00.90|+01.50"},
+    {"action": "PutObject", "object_id": "AlarmClock|+01.65|+00.80|-01.28", "receptacle_id": "CounterTop|+02.10|+00.90|+01.50"},
+    {"action": "stop"}
+]
+
+Generate the action sequence to achieve all subgoals:
+"""
+            return prompt
+
+        prompt += """
+## Available Actions:
+- Navigation: MoveAhead, MoveBack, MoveLeft, MoveRight, RotateLeft, RotateRight, LookUp, LookDown
+- Object Interaction: PickupObject <object_id>, PutObject <object_id, object_id>
+- Container Actions: OpenObject <object_id>, CloseObject <object_id>
+- Appliance Actions: ToggleObjectOn <object_id>, ToggleObjectOff <object_id>
+- Object Modification: SliceObject <object_id>
+
+## Planning Rules:
+1. **Achieve subgoals in the given order** - each subgoal builds on the previous ones
+2. **Navigation first** - Navigate to objects before interacting with them
+3. **Object interactions** - Pick up objects with PickupObject before moving them
+4. **State changes** - Use appropriate actions to change object states
+5. **Exact object IDs** - Use the exact object IDs from the subgoals
+6. **Find objects first** - Navigate around to find objects if needed
+7. **Complete all subgoals** - Don't stop until all subgoals are achieved
+8. **PutObject requires two object_ids** - the object being placed and the receptacle
+
 
 ## Output Format:
 Generate a JSON array of actions that will achieve the subgoals in order:
@@ -129,6 +168,9 @@ Generate a JSON array of actions that will achieve the subgoals in order:
     {"action": "PickupObject", "object_id": "AlarmClock|+01.65|+00.80|-01.28"},
     {"action": "MoveLeft"},
     {"action": "ToggleObjectOn", "object_id": "DeskLamp|-01.31|+01.23|-00.99"},
+    {"action": "MoveAhead"},
+    {"action": "MoveAhead"},
+    {"action": "PutObject", "object_id": "AlarmClock|+01.65|+00.80|-01.28", "receptacle_id": "CounterTop|+02.10|+00.90|+01.50"},
     {"action": "stop"}
 ]
 
@@ -138,6 +180,7 @@ Generate the action sequence to achieve all subgoals:
 
     def extract_subgoals(self, subgoals_json):
         """Extract subgoals handling markdown format"""
+        breakpoint()
         if isinstance(subgoals_json, str):
             try:
                 data = json.loads(subgoals_json)
@@ -282,3 +325,45 @@ Generate the action sequence to achieve all subgoals:
             prompt_section += line + "\n"
         
         return prompt_section
+    
+    def precompute_all_plans(self, traj_files):
+        """
+        Phase 1: Generate all LLM plans upfront (single-threaded, minimal GPU usage)
+        Since we only make 2 LLM calls per trajectory, batch this phase
+        """
+        print("Phase 1: Pre-computing all LLM plans...")
+        all_plans = {}
+        
+        # Use sequential LLM calls since batch methods aren't implemented yet
+        for i, traj_file in enumerate(traj_files):
+            try:
+                with open(traj_file, 'r') as f:
+                    traj_data = json.load(f)
+                
+                # Get scene info without creating environment
+                scene_info = self._get_scene_info_from_data(traj_data)
+                task_desc = traj_data['turk_annotations']['anns'][0]['task_desc']
+                
+                # Two LLM calls per trajectory using existing methods
+                subgoals = self.llm_agent.get_subgoals_from_scene(task_desc, scene_info)
+                plan = self.llm_agent.generate_plan(subgoals, scene_info)
+                
+                all_plans[traj_file] = {
+                    'subgoals': subgoals,
+                    'plan': plan,
+                    'traj_data': traj_data
+                }
+                
+                if (i + 1) % 10 == 0:
+                    print(f"Generated plans for {i + 1}/{len(traj_files)} trajectories")
+                    
+            except Exception as e:
+                print(f"Error generating plan for {traj_file}: {e}")
+                all_plans[traj_file] = {
+                    'subgoals': [],
+                    'plan': [{'action': 'stop'}],
+                    'traj_data': traj_data
+                }
+        
+        print(f"Phase 1 complete: Generated plans for {len(all_plans)} trajectories")
+        return all_plans

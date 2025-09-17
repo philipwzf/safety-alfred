@@ -38,7 +38,7 @@ class EvalLLM:
             with open(self.log_file, 'a', encoding='utf-8') as f:
                 f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
 
-    def test_single_trajectory(self, traj_file_path=None):
+    def test_single_trajectory(self, traj_file_path=None, goto=False):
         """
         Test evaluation on a single trajectory
         """
@@ -62,14 +62,13 @@ class EvalLLM:
             def acquire(self): pass
             def release(self): pass
         
-        lock = SimpleLock()
-        
+        lock = SimpleLock()  
         try:
             print(f"Testing single trajectory: {traj_file_path}")
             print(f"Task description: {traj_data['turk_annotations']['anns'][0]['task_desc']}")
             
             # Run evaluation on single trajectory
-            self.evaluate(env, 0, traj_data, self.args, lock, successes, failures, results)
+            self.evaluate(env, 0, traj_data, self.args, lock, successes, failures, results, goto=goto)
 
         except Exception as e:
             print(f"Error during evaluation: {e}")
@@ -121,18 +120,27 @@ class EvalLLM:
         """
         action_name = action_dict.get('action')
         object_id = action_dict.get('object_id', '')
-        
+        receptacle_id = action_dict.get('receptacle_id', '')
+        if action_name == "PutObject":
+            if not receptacle_id:
+                raise ValueError("PutObject action requires a receptacle_id")
+    
+            # We only need the receptacle_id for PutObject (the object to put down is always the held object)
+            object_id = receptacle_id
+
         try:
             # Use the same direct execution approach as eval_llm_step.py
             event, api_action = env.to_thor_api_exec(action_name, object_id, smooth_nav=smooth_nav)
             success = event.metadata['lastActionSuccess']
             error = event.metadata.get('errorMessage', '') if not success else ''
+            self.log(f"Action: {action_name}, Object ID: {object_id}, Success: {success}, Error: {error}")
             return success, event, error
         except Exception as e:
+            self.log(f"Error: {e} during action {action_name} with object {object_id}")
             return False, None, str(e)
         
 
-    def evaluate(self, env, r_idx, traj_data, args, lock, successes, failures, results):
+    def evaluate(self, env, r_idx, traj_data, args, lock, successes, failures, results, goto=False):
         EvalLLM.log_method = self.log
 
         # setup scene
@@ -154,7 +162,7 @@ class EvalLLM:
         subgoals = self.llm_agent.get_subgoals_from_scene(goal_instr, scene_info)
         
         # Generate LLM plan
-        llm_plan = self.llm_agent.generate_plan(subgoals, scene_info)
+        llm_plan = self.llm_agent.generate_plan(subgoals, scene_info, goto=goto)
 
         # Execute plan
         done, success = False, False
@@ -189,7 +197,6 @@ class EvalLLM:
 
             # Execute action in environment
             t_success, event, err = self.execute_action(env, action_data, smooth_nav=args.smooth_nav)
-            self.log(f"Step {t}: Action: {action_data}, Success: {t_success}, Error: {err}")
             
             if not t_success:
                 fails += 1
