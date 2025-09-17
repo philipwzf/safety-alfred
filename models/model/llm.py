@@ -180,7 +180,6 @@ Generate the action sequence to achieve all subgoals:
 
     def extract_subgoals(self, subgoals_json):
         """Extract subgoals handling markdown format"""
-        breakpoint()
         if isinstance(subgoals_json, str):
             try:
                 data = json.loads(subgoals_json)
