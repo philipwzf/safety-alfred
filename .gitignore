@@ -3,5 +3,8 @@
 *.pyd
 __pycache__/
 
-.json
-.txt
+*.json
+*.jsonl
+*.txt
+
+logs/*
