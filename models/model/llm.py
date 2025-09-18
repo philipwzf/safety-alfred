@@ -36,9 +36,8 @@ class LLMAgent:
 Task: {task_desc}
 
 Scene Information:
-- Scene Number: {scene_info['scene_num']}
-- Agent Position: {scene_info['agent_position']}
-- Agent Rotation: {scene_info['agent_rotation']}
+- Agent Position: {scene_info['agent']['position']}
+- Agent Rotation: {scene_info['agent']['rotation']}
 
 Available Objects:
 {self.format_objects_for_prompt(scene_info['objects'], filter_visible=False)}
@@ -86,10 +85,9 @@ Generate subgoals for the given task using only the provided objects. Format you
 
         prompt = f"""
 ## Current Agent Status:
-- Position: {scene_info['agent_position']}
-- Rotation: {scene_info['agent_rotation']}
-- Scene: FloorPlan{scene_info['scene_num']}
-- Holding: {scene_info['agent_held_object']['objectType'] if scene_info['agent_held_object'] else 'Nothing'}
+- Position: {scene_info['agent']['position']}
+- Rotation: {scene_info['agent']['rotation']}
+- Holding: {scene_info['inventoryObjects'] if scene_info['inventoryObjects'] else 'Nothing'}
 
 ## Subgoals to Achieve (in order):
 """
@@ -299,7 +297,6 @@ Generate the action sequence to achieve all subgoals:
         Args:
             objects: List of object dictionaries from scene_info['objects']
             filter_visible: If True, only include visible objects
-            include_position: If True, include position coordinates
         
         Returns:
             Formatted string ready for prompt inclusion
@@ -336,9 +333,9 @@ Generate the action sequence to achieve all subgoals:
                 properties.append(f"{'cooked' if obj['isCooked'] else 'uncooked'}")
             if obj.get('isSliced'):
                 properties.append("sliced")
-            if obj['temperature'] != 'RoomTemp':
-                properties.append(f"temperature: {obj['temperature']}")
-            
+            if obj['ObjectTemperature'] != 'RoomTemp':
+                properties.append(f"temperature: {obj['ObjectTemperature']}")
+
             line += ", ".join(properties) if properties else "no special properties"
             line += f" at {obj['position']}\n"
             
