@@ -20,6 +20,8 @@ Train models:
 $ export API_KEY="your_api_key_here"
 $ python models/eval/eval_llm_step.py \
     --traj_file data/json_2.1.0/train/look_at_obj_in_light-AlarmClock-None-DeskLamp-305/trial_T20190908_082723_323728/traj_data.json --debug
+
+$ python models/eval/eval_llm_astar.py --debug --traj_file=data/json_2.1.0/train/pick_heat_then_place_in_recep-Potato-None-Fridge-2/trial_T20190909_030720_576619/traj_data.json
 ```
 
 

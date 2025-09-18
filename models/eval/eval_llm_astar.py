@@ -15,12 +15,12 @@ from models.eval.eval_llm import EvalLLM
 from models.model.llm_pddl import LLMPDDLAgent
 
 
-class EvalLLMAStar(EvalLLM):
+class EvalLLMAstar(EvalLLM):
     """EvalLLM variant that expands GotoLocation into executable actions."""
 
     def __init__(self, args, manager=None):
         super().__init__(args, manager)
-        self.llm_agent = LLMPDDLAgent(args)
+        self.llm_agent = LLMAstar(args)
         self.llm_agent.set_log_method(self.log)
         self._graph: Optional[Graph] = None
         self._graph_scene: Optional[int] = None
@@ -158,3 +158,26 @@ class EvalLLMAStar(EvalLLM):
     @staticmethod
     def _world_to_grid(value: float) -> int:
         return int(np.round(value / constants.AGENT_STEP_SIZE))
+
+
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--traj_file', type=str, default=None)
+    parser.add_argument('--max_steps', type=int, default=50)
+    parser.add_argument('--max_fails', type=int, default=5)
+    parser.add_argument('--smooth_nav', action='store_true')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--reward_config', default='models/config/rewards.json')
+    parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='LLM model to use')
+    parser.add_argument('--max_tokens', type=int, default=1000, help='Max tokens for LLM response')
+    parser.add_argument('--temperature', type=float, default=0.6, help='Temperature for LLM sampling')
+    parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')
+    parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
+    parser.add_argument('--presence_penalty', type=float, default=0.0, help='Presence penalty for LLM')
+    
+    args = parser.parse_args()
+
+    evaluator = EvalLLMAstar(args)
+    evaluator.test_single_trajectory(args.traj_file, goto=True)
