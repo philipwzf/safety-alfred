@@ -180,15 +180,40 @@ Generate the action sequence to achieve all subgoals:
 
     def extract_subgoals(self, subgoals_json):
         """Extract subgoals handling markdown format"""
-        if isinstance(subgoals_json, str):
-            try:
-                data = json.loads(subgoals_json)
-                return data.get('subgoals', [])
-            except:
-                return []
-        elif isinstance(subgoals_json, dict):
-            return subgoals_json.get('subgoals', [])
-        return []
+        if not subgoals_json:
+            self.log("No subgoals provided by LLM; continuing without structured subgoals")
+            raise ValueError("No subgoals provided by LLM")
+
+        subgoals_json = str(subgoals_json).strip()
+        if "```json" in subgoals_json:
+            # Find the start and end of the JSON block
+            start_marker = "```json"
+            end_marker = "```"
+
+            start_idx = subgoals_json.find(start_marker)
+            if start_idx != -1:
+                # Move past the start marker
+                start_idx += len(start_marker)
+                
+                # Find the end marker after the start
+                end_idx = subgoals_json.find(end_marker, start_idx)
+                if end_idx != -1:
+                    # Extract the JSON content
+                    json_content = subgoals_json[start_idx:end_idx].strip()
+                else:
+                    # If no closing ```, take everything after ```json
+                    json_content = subgoals_json[start_idx:].strip()
+            else:
+                # Fallback: try to extract after ```json
+                json_content = subgoals_json.split("```json", 1)[-1].strip()
+                if json_content.endswith("```"):
+                    json_content = json_content[:-3].strip()
+        else:
+            # No markdown code blocks, use the whole response
+            json_content = subgoals_json
+
+        data = json.loads(json_content)
+        return data.get('subgoals', [])
 
     def query_llm(self, system_prompt, user_prompt):
         """
@@ -233,8 +258,9 @@ Generate the action sequence to achieve all subgoals:
             return content
 
         except Exception as e:
-            error_msg = f"Unexpected error calling LLM: {e}"
-            self.log(f"ERROR: {error_msg}")
+            error_msg = f"[ERROR] Unexpected error calling LLM: {e}"
+            self.log(f"{error_msg}")
+            print(error_msg)
 
         return None
 
@@ -324,45 +350,3 @@ Generate the action sequence to achieve all subgoals:
             prompt_section += line + "\n"
         
         return prompt_section
-    
-    def precompute_all_plans(self, traj_files):
-        """
-        Phase 1: Generate all LLM plans upfront (single-threaded, minimal GPU usage)
-        Since we only make 2 LLM calls per trajectory, batch this phase
-        """
-        print("Phase 1: Pre-computing all LLM plans...")
-        all_plans = {}
-        
-        # Use sequential LLM calls since batch methods aren't implemented yet
-        for i, traj_file in enumerate(traj_files):
-            try:
-                with open(traj_file, 'r') as f:
-                    traj_data = json.load(f)
-                
-                # Get scene info without creating environment
-                scene_info = self._get_scene_info_from_data(traj_data)
-                task_desc = traj_data['turk_annotations']['anns'][0]['task_desc']
-                
-                # Two LLM calls per trajectory using existing methods
-                subgoals = self.llm_agent.get_subgoals_from_scene(task_desc, scene_info)
-                plan = self.llm_agent.generate_plan(subgoals, scene_info)
-                
-                all_plans[traj_file] = {
-                    'subgoals': subgoals,
-                    'plan': plan,
-                    'traj_data': traj_data
-                }
-                
-                if (i + 1) % 10 == 0:
-                    print(f"Generated plans for {i + 1}/{len(traj_files)} trajectories")
-                    
-            except Exception as e:
-                print(f"Error generating plan for {traj_file}: {e}")
-                all_plans[traj_file] = {
-                    'subgoals': [],
-                    'plan': [{'action': 'stop'}],
-                    'traj_data': traj_data
-                }
-        
-        print(f"Phase 1 complete: Generated plans for {len(all_plans)} trajectories")
-        return all_plans
