@@ -4,10 +4,46 @@ import sys
 # Add project root to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
+import copy
 import json
-from datetime import datetime
+from datetime import datetime, time
 from env.thor_env import ThorEnv
 from models.model.llm import LLMAgent
+
+
+class EpisodeTrace:
+    """Collects per-step execution records for a single episode."""
+
+    def __init__(self) -> None:
+        self._steps = []
+        self._step_index = 0
+
+    def record(self, plan_action, thor_action, success, error, event_metadata) -> None:
+        entry = {
+            'step': self._step_index,
+            'plan_action': self._sanitize(plan_action),
+            'thor_action': self._sanitize(thor_action),
+            'success': bool(success),
+            'error': error or '',
+            'event_metadata': self._sanitize(event_metadata) if event_metadata is not None else None,
+        }
+        self._steps.append(entry)
+        self._step_index += 1
+
+    def export(self):
+        return list(self._steps)
+
+    @staticmethod
+    def _sanitize(value):
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if isinstance(value, dict):
+            return {str(k): EpisodeTrace._sanitize(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [EpisodeTrace._sanitize(v) for v in value]
+        if hasattr(value, 'tolist'):
+            return EpisodeTrace._sanitize(value.tolist())
+        return str(value)
 
 
 class EvalLLM:
@@ -25,6 +61,7 @@ class EvalLLM:
         self.llm_agent = LLMAgent(args)
         self.llm_agent.set_log_method(self.log)
         self.logging = args.debug if hasattr(args, 'debug') else False
+        self._current_trace = None
         
         # Setup simple logging
         os.makedirs('logs', exist_ok=True)
@@ -128,192 +165,177 @@ class EvalLLM:
             # We only need the receptacle_id for PutObject (the object to put down is always the held object)
             object_id = receptacle_id
 
+        plan_action_copy = copy.deepcopy(action_dict)
         try:
             # Use the same direct execution approach as eval_llm_step.py
             event, api_action = env.to_thor_api_exec(action_name, object_id, smooth_nav=smooth_nav)
             success = event.metadata['lastActionSuccess']
             error = event.metadata.get('errorMessage', '') if not success else ''
             self.log(f"Action: {action_name}, Object ID: {object_id}, Success: {success}, Error: {error}")
+            self._record_step(plan_action_copy, api_action, success, error, event)
             return success, event, error
         except Exception as e:
             self.log(f"Error: {e} during action {action_name} with object {object_id}")
+            self._record_step(plan_action_copy, None, False, str(e), None)
             return False, None, str(e)
         
 
+    def _record_step(self, plan_action, thor_action, success, error, event):
+        if self._current_trace is None or event is None:
+            return
+        metadata = event.metadata
+        metadata = self.remove_useless_info(metadata)
+        self._current_trace.record(plan_action, thor_action, success, error, metadata)
+
+
     def evaluate(self, env, r_idx, traj_data, args, lock, successes, failures, results, goto=False):
         EvalLLM.log_method = self.log
+        trace = EpisodeTrace()
+        previous_trace = self._current_trace
+        self._current_trace = trace
+        try:
+            # setup scene
+            reward_type = 'dense'
+            self.setup_scene(env, traj_data, r_idx, args, reward_type=reward_type)
 
-        # setup scene
-        reward_type = 'dense'
-        self.setup_scene(env, traj_data, r_idx, args, reward_type=reward_type)
+            # goal instruction
+            goal_instr = traj_data['turk_annotations']['anns'][r_idx]['task_desc']
 
-        # goal instruction
-        goal_instr = traj_data['turk_annotations']['anns'][r_idx]['task_desc']
+            # Log task info
+            self.log(f"Task: {goal_instr}")
+            self.log(f"Scene: {traj_data['scene']['scene_num']}")
+            self.log(f"Objects: {list(traj_data['scene']['object_poses'])}")
 
-        # Log task info
-        self.log(f"Task: {goal_instr}")
-        self.log(f"Scene: {traj_data['scene']['scene_num']}")
-        self.log(f"Objects: {list(traj_data['scene']['object_poses'])}")
+            # Get scene information for LLM
+            metadata = env.last_event.metadata 
+            scene_info = self.remove_useless_info(metadata)
 
-        # Get scene information for LLM
-        scene_info = self.get_scene_info(env, traj_data)
+            # Test goal extraction
+            subgoals = self.llm_agent.get_subgoals_from_scene(goal_instr, scene_info)
 
-        # Test goal extraction
-        subgoals = self.llm_agent.get_subgoals_from_scene(goal_instr, scene_info)
-        
-        # Generate LLM plan
-        llm_plan = self.llm_agent.generate_plan(subgoals, scene_info, goto=goto)
+            # Generate LLM plan
+            llm_plan = self.llm_agent.generate_plan(subgoals, scene_info, goto=goto)
 
-        # Execute plan
-        done, success = False, False
-        fails = 0
-        t = 0
-        reward = 0
-        action_idx = 0
+            # Execute plan
+            done, success = False, False
+            fails = 0
+            t = 0
+            reward = 0
+            action_idx = 0
 
-        print(f"Generated plan with {len(llm_plan)} actions")
-        
-        while not done and action_idx < len(llm_plan):
-            # break if max_steps reached
-            if t >= args.max_steps:
-                print("Max steps reached")
-                break
-                
-            action_data = llm_plan[action_idx]
-            action = action_data.get('action')
-            
-            if not action:
-                print("Invalid action in plan")
-                break
-                
-            # Check if stop action
-            if action.lower() in ['stop', 'end', 'finish', 'done']:
-                print("\tLLM predicted STOP")
-                break
+            print(f"Generated plan with {len(llm_plan)} actions")
 
-            # print action
-            if args.debug:
-                print(f"Step {t}: {action_data}")
-
-            # Execute action in environment
-            t_success, event, err = self.execute_action(env, action_data, smooth_nav=args.smooth_nav)
-            
-            if not t_success:
-                fails += 1
-                if fails >= args.max_fails:
-                    print("Interact API failed %d times" % fails + "; latest error '%s'" % err)
+            while not done and action_idx < len(llm_plan):
+                if t >= args.max_steps:
+                    print("Max steps reached")
                     break
 
-            # next time-step
-            t_reward, t_done = env.get_transition_reward()
-            reward += t_reward
-            t += 1
-            action_idx += 1
+                action_data = llm_plan[action_idx]
+                action = action_data.get('action')
 
-        # check if goal was satisfied
-        goal_satisfied = env.get_goal_satisfied()
-        if goal_satisfied:
-            print("Goal Reached")
-            success = True
+                if not action:
+                    print("Invalid action in plan")
+                    break
 
-        # goal_conditions
-        pcs = env.get_goal_conditions_met()
-        goal_condition_success_rate = pcs[0] / float(pcs[1])
+                if action.lower() in ['stop', 'end', 'finish', 'done']:
+                    print("\tLLM predicted STOP")
+                    break
 
-        # SPL calculation
-        path_len_weight = len(traj_data['plan']['low_actions'])
-        s_spl = (1 if goal_satisfied else 0) * min(1., path_len_weight / float(t)) if t > 0 else 0
-        pc_spl = goal_condition_success_rate * min(1., path_len_weight / float(t)) if t > 0 else 0
+                if args.debug:
+                    print(f"Step {t}: {action_data}")
 
-        # path length weighted SPL
-        plw_s_spl = s_spl * path_len_weight
-        plw_pc_spl = pc_spl * path_len_weight
+                t_success, event, err = self.execute_action(env, action_data, smooth_nav=args.smooth_nav)
 
-        # log success/fails
-        lock.acquire()
-        log_entry = {'trial': traj_data['task_id'],
-                     'type': traj_data['task_type'],
-                     'repeat_idx': int(r_idx),
-                     'goal_instr': goal_instr,
-                     'completed_goal_conditions': int(pcs[0]),
-                     'total_goal_conditions': int(pcs[1]),
-                     'goal_condition_success': float(goal_condition_success_rate),
-                     'success_spl': float(s_spl),
-                     'path_len_weighted_success_spl': float(plw_s_spl),
-                     'goal_condition_spl': float(pc_spl),
-                     'path_len_weighted_goal_condition_spl': float(plw_pc_spl),
-                     'path_len_weight': int(path_len_weight),
-                     'reward': float(reward),
-                     'llm_plan_length': len(llm_plan),
-                     'executed_actions': action_idx}
-                     
-        if success:
-            successes.append(log_entry)
-        else:
-            failures.append(log_entry)
+                if not t_success:
+                    fails += 1
+                    if fails >= args.max_fails:
+                        print("Interact API failed %d times" % fails + "; latest error '%s'" % err)
+                        break
 
-        # overall results
-        results['all'] = self.get_metrics(successes, failures)
+                t_reward, t_done = env.get_transition_reward()
+                reward += t_reward
+                t += 1
+                action_idx += 1
 
-        if results.get('all'):
-            print("-------------")
-            print("SR: %d/%d = %.3f" % (results['all']['success']['num_successes'],
-                                        results['all']['success']['num_evals'],
-                                        results['all']['success']['success_rate']))
-            print("GC: %d/%d = %.3f" % (results['all']['goal_condition_success']['completed_goal_conditions'],
-                                        results['all']['goal_condition_success']['total_goal_conditions'],
-                                        results['all']['goal_condition_success']['goal_condition_success_rate']))
-            print("PLW SR: %.3f" % (results['all']['path_length_weighted_success_rate']))
-            print("PLW GC: %.3f" % (results['all']['path_length_weighted_goal_condition_success_rate']))
-            print("-------------")
+            goal_satisfied = env.get_goal_satisfied()
+            if goal_satisfied:
+                print("Goal Reached")
+                success = True
 
-        lock.release()
+            pcs = env.get_goal_conditions_met()
+            goal_condition_success_rate = pcs[0] / float(pcs[1])
+
+            path_len_weight = len(traj_data['plan']['low_actions'])
+            s_spl = (1 if goal_satisfied else 0) * min(1., path_len_weight / float(t)) if t > 0 else 0
+            pc_spl = goal_condition_success_rate * min(1., path_len_weight / float(t)) if t > 0 else 0
+
+            plw_s_spl = s_spl * path_len_weight
+            plw_pc_spl = pc_spl * path_len_weight
+
+            lock.acquire()
+            log_entry = {
+                'trial': traj_data['task_id'],
+                'type': traj_data['task_type'],
+                'repeat_idx': int(r_idx),
+                'goal_instr': goal_instr,
+                'completed_goal_conditions': int(pcs[0]),
+                'total_goal_conditions': int(pcs[1]),
+                'goal_condition_success': float(goal_condition_success_rate),
+                'success_spl': float(s_spl),
+                'path_len_weighted_success_spl': float(plw_s_spl),
+                'goal_condition_spl': float(pc_spl),
+                'path_len_weighted_goal_condition_spl': float(plw_pc_spl),
+                'path_len_weight': int(path_len_weight),
+                'reward': float(reward),
+                'llm_plan_length': len(llm_plan),
+                'executed_actions': action_idx,
+                'trajectory': trace.export(),
+            }
+            # Write trace in a json file
+            log_dir = os.path.dirname(self.log_file)
+            traj_log_file = os.path.join(log_dir, "trajectories",f"{traj_data['task_id']}",f"r{r_idx}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
+
+            with open(traj_log_file, 'w', encoding='utf-8') as f:
+                # write trace.export() to json
+                json.dump(trace.export(), f, indent=2)
+                print(f"Saved trajectory log to {traj_log_file}")
+
+            if success:
+                successes.append(log_entry)
+            else:
+                failures.append(log_entry)
+
+            results['all'] = self.get_metrics(successes, failures)
+
+            if results.get('all'):
+                print("-------------")
+                print("SR: %d/%d = %.3f" % (results['all']['success']['num_successes'],
+                                            results['all']['success']['num_evals'],
+                                            results['all']['success']['success_rate']))
+                print("GC: %d/%d = %.3f" % (results['all']['goal_condition_success']['completed_goal_conditions'],
+                                            results['all']['goal_condition_success']['total_goal_conditions'],
+                                            results['all']['goal_condition_success']['goal_condition_success_rate']))
+                print("PLW SR: %.3f" % (results['all']['path_length_weighted_success_rate']))
+                print("PLW GC: %.3f" % (results['all']['path_length_weighted_goal_condition_success_rate']))
+                print("-------------")
+
+            lock.release()
+        finally:
+            self._current_trace = previous_trace
 
     @classmethod
-    def get_scene_info(cls, env, traj_data):
+    def remove_useless_info(cls, metadata):
         """
         Extract current scene information for LLM input
+        Remove useless info to reduce token usage
         """
-        metadata = env.last_event.metadata
+        # metadata_keys(['objects', 'isSceneAtRest', 'agent', 'hand', 'fov', 'isStanding', 'cameraPosition', 'cameraOrthSize', 'thirdPartyCameras', 'collided', 'collidedObjects', 'inventoryObjects', 'sceneName', 'lastAction', 'errorMessage', 'errorCode', 'lastActionSuccess', 'screenWidth', 'screenHeight', 'agentId', 'colors', 'colorBounds', 'reachablePositions', 'flatSurfacesOnGrid', 'distances', 'normals', 'isOpenableGrid', 'segmentedObjectIds', 'objectIdsInBox', 'actionIntReturn', 'actionFloatReturn', 'actionStringsReturn', 'actionFloatsReturn', 'actionVector3sReturn', 'visibleRange', 'actionReturn', 'currentTime'])
+        scene_info = metadata.copy()
+        useless_info = ['isSceneAtRest', 'fov', 'isStanding', 'cameraPosition', 'cameraOrthSize', 'thirdPartyCameras', 'collided', 'collidedObjects', 'sceneName', 'lastAction', 'errorMessage', 'errorCode', 'lastActionSuccess', 'screenWidth', 'screenHeight', 'agentId', 'colors', 'colorBounds', 'reachablePositions', 'flatSurfacesOnGrid', 'normals', 'isOpenableGrid', 'segmentedObjectIds', 'actionIntReturn', 'actionFloatReturn', 'actionStringsReturn', 'actionFloatsReturn', 'actionVector3sReturn', 'visibleRange', 'actionReturn', 'currentTime']
+        for key in useless_info:
+            scene_info.pop(key, None)
         
-        scene_info = {
-            'scene_num': traj_data['scene']['scene_num'],
-            'objects': [],
-            'agent_position': metadata['agent']['position'],
-            'agent_rotation': metadata['agent']['rotation'],
-            'agent_inventory': metadata['inventoryObjects'],  # Objects being held
-            'agent_held_object': metadata['inventoryObjects'][0] if metadata['inventoryObjects'] else None
-        }
-        
-        # Get all objects in scene
-        for obj in metadata['objects']:
-            obj_info = {
-                'objectType': obj['objectType'],
-                'objectId': obj['objectId'],
-                'position': obj['position'],
-                'visible': obj['visible'],
-                'pickupable': obj.get('pickupable', False),
-                'receptacle': obj.get('receptacle', False),
-                'openable': obj.get('openable', False),
-                'isOpen': obj.get('isOpen', False),
-                'toggleable': obj.get('toggleable', False),
-                'isToggled': obj.get('isToggled', False),
-                'breakable': obj.get('breakable', False),
-                'isBroken': obj.get('isBroken', False),
-                'canFillWithLiquid': obj.get('canFillWithLiquid', False),
-                'isFilledWithLiquid': obj.get('isFilledWithLiquid', False),
-                'dirtyable': obj.get('dirtyable', False),
-                'isDirty': obj.get('isDirty', False),
-                'canBeUsedUp': obj.get('canBeUsedUp', False),
-                'isUsedUp': obj.get('isUsedUp', False),
-                'cookable': obj.get('cookable', False),
-                'isCooked': obj.get('isCooked', False),
-                'temperature': obj.get('temperature', 'RoomTemp'),
-                'isSliced': obj.get('isSliced', False),  # Add sliced state
-                'isPickedUp': obj['objectId'] in [inv_obj['objectId'] for inv_obj in metadata['inventoryObjects']]  # Check if in inventory
-            }
-            scene_info['objects'].append(obj_info)
-            
         return scene_info
 
     @classmethod
