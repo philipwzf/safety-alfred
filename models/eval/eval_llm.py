@@ -169,6 +169,8 @@ class EvalLLM:
         try:
             # Use the same direct execution approach as eval_llm_step.py
             event, api_action = env.to_thor_api_exec(action_name, object_id, smooth_nav=smooth_nav)
+            if "Microwave" in object_id and action_name == "OpenObject":
+                breakpoint()
             success = event.metadata['lastActionSuccess']
             error = event.metadata.get('errorMessage', '') if not success else ''
             self.log(f"Action: {action_name}, Object ID: {object_id}, Success: {success}, Error: {error}")
@@ -316,8 +318,6 @@ class EvalLLM:
                 print("GC: %d/%d = %.3f" % (results['all']['goal_condition_success']['completed_goal_conditions'],
                                             results['all']['goal_condition_success']['total_goal_conditions'],
                                             results['all']['goal_condition_success']['goal_condition_success_rate']))
-                print("PLW SR: %.3f" % (results['all']['path_length_weighted_success_rate']))
-                print("PLW GC: %.3f" % (results['all']['path_length_weighted_goal_condition_success_rate']))
                 print("-------------")
 
             lock.release()
@@ -360,12 +360,6 @@ class EvalLLM:
         # metrics
         sr = float(num_successes) / num_evals
         pc = completed_goal_conditions / float(total_goal_conditions) if total_goal_conditions > 0 else 0
-        plw_sr = (float(sum([entry['path_len_weighted_success_spl'] for entry in successes]) +
-                        sum([entry['path_len_weighted_success_spl'] for entry in failures])) /
-                  total_path_len_weight) if total_path_len_weight > 0 else 0
-        plw_pc = (float(sum([entry['path_len_weighted_goal_condition_spl'] for entry in successes]) +
-                        sum([entry['path_len_weighted_goal_condition_spl'] for entry in failures])) /
-                  total_path_len_weight) if total_path_len_weight > 0 else 0
 
         # result table
         res = dict()
@@ -375,8 +369,6 @@ class EvalLLM:
         res['goal_condition_success'] = {'completed_goal_conditions': completed_goal_conditions,
                                         'total_goal_conditions': total_goal_conditions,
                                         'goal_condition_success_rate': pc}
-        res['path_length_weighted_success_rate'] = plw_sr
-        res['path_length_weighted_goal_condition_success_rate'] = plw_pc
 
         return res
     

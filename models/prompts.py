@@ -70,6 +70,54 @@ You are generating subgoals for household tasks. Given a task description and re
 2. Generate subgoals in logical temporal order
 3. For "examine X under light" tasks: pickup X first, then go to lamp, then toggle lamp on
 4. Always close opened receptacles at the end
+5. Slice Target Objects: For tasks requiring sliced objects, ensure the agent is not holding the target object (apple, potato for example). And the agent must be holding the knife at a location close to the target object before performing the slicing action. The agent MUST put the knife down after slicing the target object.
+### Slicing Example:
+Task: "Slice the apple"
+{
+  "subgoals": [
+    "atLocation(Agent, Knife|+00.50|+00.88|-01.50)",
+    "NOT holds(Agent, Apple|+01.00|+00.88|-01.11)",
+    "holds(Agent, Knife|+00.50|+00.88|-01.50)",
+    "atLocation(Agent, Apple|+01.00|+00.88|-01.11)",
+    "isSliced(Apple|+01.00|+00.88|-01.11)",
+    "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)"
+  ]
+}
+
+
+6. After slicing, if the task requires placing the sliced object somewhere, add an additional subgoal to put the sliced object in the appropriate receptacle. The sliced object will take on the same location as the original object but with "Sliced" appended to its name (e.g., "Apple|+01.00|+00.88|-01.11|AppleSliced_1" or "Apple|+01.00|+00.88|-01.11|AppleSliced_2").
+### Example with placing sliced object:
+{
+  "subgoals": [
+    "atLocation(Agent, Knife|+00.50|+00.88|-01.50)",
+    "holds(Agent, Knife|+00.50|+00.88|-01.50)",
+    "atLocation(Agent, Apple|+01.00|+00.88|-01.11)",
+    "isSliced(Apple|+01.00|+00.88|-01.11)",
+    "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)",
+    "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+    "atLocation(Agent, Bowl|+02.10|+00.88|-02.00)",
+    "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Bowl|+02.10|+00.88|-02.00)"
+  ]
+}
+7. To operate the oven or microwave, the agent must first open the appliance, place the object inside, close the appliance, and then toggle it on. After heating, the agent must add subgoals to toggle off the appliance, open the appliance, remove the object, and close the appliance again.
+### Example with heating:
+Task: "Heat the apple in the microwave"
+{
+    "subgoals": [
+        "atLocation(Agent, Apple|+02.10|+00.88|-02.00)",
+        "holds(Agent, Apple|+02.10|+00.88|-02.00)",
+        "atLocation(Agent, Microwave|+01.20|+00.88|-01.50)",
+        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "inReceptacle(Apple|+02.10|+00.88|-02.00, Microwave|+01.20|+00.88|-01.50)",
+        "NOT holds(Agent, Apple|+02.10|+00.88|-02.00)",
+        "closed(Microwave|+01.20|+00.88|-01.50)",
+        "isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "holds(Agent, Apple|+02.10|+00.88|-02.00)",
+        "NOT opened(Microwave|+01.20|+00.88|-01.50)",
+    ]
+}
 
 ## Output Format:
 {
@@ -80,6 +128,31 @@ You are generating subgoals for household tasks. Given a task description and re
   ]
 }
 
+### Examples:
+Task: "Heat a slice of apple and put it on the table"
+{
+    "subgoals": [
+        "atLocation(Agent, Knife|+00.50|+00.88|-01.50)",
+        "NOT holds(Agent, Apple|+01.00|+00.88|-01.11)",
+        "holds(Agent, Knife|+00.50|+00.88|-01.50)",
+        "atLocation(Agent, Apple|+01.00|+00.88|-01.11)",
+        "isSliced(Apple|+01.00|+00.88|-01.11)",
+        "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)",
+        "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+        "atLocation(Agent, Microwave|+01.20|+00.88|-01.50)",
+        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Microwave|+01.20|+00.88|-01.50)",
+        "NOT holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+        "closed(Microwave|+01.20|+00.88|-01.50)",
+        "isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+        "NOT opened(Microwave|+01.20|+00.88|-01.50)",
+        "atLocation(Agent, Table|+00.00|+00.88|-01.50)",
+        "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Table|+00.00|+00.88|-01.50)"
+    ]
+}
 Generate subgoals for the given task using only the provided objects. Your entire response must be a single JSON object. Do NOT wrap the JSON in Markdown code blocks or any other formatting."
 
 """
@@ -164,11 +237,32 @@ ACTION_SEQ_PROMPT_GOTO = """You are an AI agent that executes household tasks in
 - `isToggled(ObjectId)` → Toggle object: `ToggleObjectOn <object_id>` or `ToggleObjectOff <object_id>`
 - `inReceptacle(ObjectId, ReceptacleId)` → Put object: `PutObject <object_id, receptacle_object_id>`
 - `isOpen(ObjectId)` → Open object: `OpenObject <object_id>`
+- `NOT holds(Agent, ObjectId)` → Ensure agent is not holding the object (if currently holding something else, MUST put it down immediately before picking up the new object)
 
 ## Special Rules:
 - **For "examine X under light" tasks**: (1) Pick up X first, (2) Navigate to lamp, (3) Turn on lamp
 - **Object visibility**: Navigate around to find objects if they're not initially visible
 - **Agent limitations**: Can only hold one object at a time
+- **Slice Target Objects**: For subgoals requiring slicing (e.g., `isSliced(ObjectId)`), ensure the agent is holding the knife at a location close to the target object. Then, include the `SliceObject` action for the target object. Do NOT pickup the target object when performing the slicing action. If the target object was previously picked up, you need to put the object on an appropriate surface before slicing. The target object must be `sliceable` and 'visible' for the action to succeed.
+### Slicing Example:
+Subgoal: `isSliced(Apple|+01.00|+00.88|-01.11)`
+[
+    {"action": "GotoLocation", "object_id": "Knife|+00.50|+00.88|-01.50"},
+    {"action": "PickupObject", "object_id": "Knife|+00.50|+00.88|-01.50"},
+    {"action": "GotoLocation", "object_id": "Apple|+01.00|+00.88|-01.11"},
+    {"action": "SliceObject", "object_id": "Apple|+01.00|+00.88|-01.11"},
+    {"action": "PutObject", "object_id": "CounterTop|+01.00|+00.88|-01.11"}
+]
+Incorrect Example (do NOT pickup the target object):
+[
+    {"action": "GotoLocation", "object_id": "Apple|+01.00|+00.88|-01.11"},
+    {"action": "PickupObject", "object_id": "Apple|+01.00|+00.88|-01.11"},
+    {"action": "GotoLocation", "object_id": "Knife|+00.50|+00.88|-01.50"},
+    {"action": "PickupObject", "object_id": "Knife|+00.50|+00.88|-01.50"},
+    {"action": "SliceObject", "object_id": "Apple|+01.00|+00.88|-01.11"},
+    {"action": "PutObject", "object_id": "CounterTop|+01.00|+00.88|-01.11"}
+]
+
 
 ## Output Format:
 Return a JSON array of action dictionaries:

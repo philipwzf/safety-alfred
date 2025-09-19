@@ -81,6 +81,13 @@ class EvalLLMAstar(EvalLLM):
         final_pose = self._get_agent_pose(env)
         success = final_pose[:2] == goal_pose[:2]
         event = env.last_event
+        target_object_id = action.get('object_id') if action else None
+        if success and event and target_object_id:
+            visible = self._is_object_visible(event.metadata, target_object_id)
+            if not visible:
+                visible = self._adjust_horizon_for_visibility(env, target_object_id, smooth_nav)
+                event = env.last_event
+            success = success and visible
         error = '' if success else (event.metadata.get('errorMessage', '') if event else '')
         return success, event, error
 
@@ -149,6 +156,53 @@ class EvalLLMAstar(EvalLLM):
         rotation = int(round(rotation_y / 90.0)) % 4
         norm_horizon = self._normalize_horizon(horizon)
         return (grid_x, grid_z, rotation, norm_horizon)
+
+    def _adjust_horizon_for_visibility(self, env, target_object_id: str, smooth_nav: bool) -> bool:
+        event = env.last_event
+        if event is None or not getattr(event, 'metadata', None):
+            return False
+
+        min_horizon = -30.0
+        max_horizon = 90.0
+
+        latest_event = event
+        agent_meta = latest_event.metadata.get('agent', {}) if latest_event.metadata else {}
+        current_horizon = agent_meta.get('cameraHorizon', 0.0)
+
+        if self._is_object_visible(latest_event.metadata, target_object_id):
+            return True
+
+        while current_horizon > min_horizon + 1e-3:
+            lookup_success, latest_event, _ = super().execute_action(env, {'action': 'LookUp'}, smooth_nav=smooth_nav)
+            if not lookup_success:
+                raise RuntimeError('LookUp action failed during horizon adjustment')
+            if latest_event and self._is_object_visible(latest_event.metadata, target_object_id):
+                return True
+            agent_meta = latest_event.metadata.get('agent', {}) if latest_event.metadata else {}
+            current_horizon = agent_meta.get('cameraHorizon', current_horizon)
+        if latest_event is None:
+            latest_event = env.last_event
+
+        while current_horizon < max_horizon - 1e-3:
+            lookdown_success, latest_event, _ = super().execute_action(env, {'action': 'LookDown'}, smooth_nav=smooth_nav)
+            if not lookdown_success:
+                raise RuntimeError('LookDown action failed during horizon adjustment')
+            if latest_event and self._is_object_visible(latest_event.metadata, target_object_id):
+                return True
+            agent_meta = latest_event.metadata.get('agent', {}) if latest_event.metadata else {}
+            current_horizon = agent_meta.get('cameraHorizon', current_horizon)
+
+        raise RuntimeError('Horizon adjustment exceeded limits without finding target object. This happened because an object being held is likely blocking the agent\'s view')
+
+    @staticmethod
+    def _is_object_visible(metadata: Optional[Dict], target_object_id: str) -> bool:
+        if not metadata:
+            return False
+        objects = metadata.get('objects', [])
+        for obj in objects:
+            if obj.get('objectId') == target_object_id:
+                return bool(obj.get('visible', False))
+        return False
 
     @staticmethod
     def _normalize_horizon(horizon_value: float) -> int:
