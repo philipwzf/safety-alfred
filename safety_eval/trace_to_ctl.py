@@ -66,22 +66,39 @@ def _state_from_metadata(metadata: Dict[str, Any]) -> Dict[str, List[str]]:
     nodes: List[str] = []
     edges: List[str] = []
 
+    raw_inventory = metadata.get("inventoryObjects") or []
     inventory_ids = {
         _normalise_object_id(inv.get("objectId") or inv.get("object_id") or inv.get("name"))
-        for inv in (metadata.get("inventoryObjects") or [])
+        for inv in raw_inventory
         if inv
     }
 
     object_entries: List[_ObjectEntry] = []
+    relation_set: set[str] = set()
 
     # Build object-centric state strings.
+    inventory_lookup = inventory_ids
+
     for obj in metadata.get("objects", []) or []:
         object_id = _normalise_object_id(obj.get("objectId") or obj.get("name"))
         if not object_id:
             continue
 
-        state_tags = _object_state_tags(obj, inventory_ids)
-        nodes.append(f"{object_id}, states:[{', '.join(sorted(state_tags))}]")
+        state_tags = _object_state_tags(obj, inventory_lookup)
+        object_type = obj.get("objectType") or object_id.split("|")[0]
+
+        if object_id in inventory_ids:
+            state_tags.append("held")
+            for alias in _type_aliases(object_type):
+                relation_set.add(f"HOLDING({alias})")
+            relation_set.add(f"HOLDING({object_id})")
+
+        if obj.get("canFillWithLiquid") and obj.get("isFilledWithLiquid"):
+            for alias in _type_aliases(object_type):
+                relation_set.add(f"ISFILLEDWITHLIQUID({alias})")
+            relation_set.add(f"ISFILLEDWITHLIQUID({object_id})")
+
+        nodes.append(f"{object_id}, states:[{', '.join(sorted(set(state_tags)))}]")
 
         bbox = _extract_bounding_box(obj.get("objectBounds"))
         parent_recs = {
@@ -105,9 +122,14 @@ def _state_from_metadata(metadata: Dict[str, Any]) -> Dict[str, List[str]]:
         agent_states.append("crouching")
     if agent_meta.get("isFalling"):
         agent_states.append("falling")
+    for inv in raw_inventory:
+        inv_id = _normalise_object_id(inv.get("objectId") or inv.get("name"))
+        if inv_id:
+            agent_states.append(f"holding:{inv_id}")
     nodes.append(f"agent, states:[{', '.join(agent_states) if agent_states else 'present'}]")
     object_entries.append(_ObjectEntry("agent", _agent_bounding_box(agent_meta)))
-    edges = sorted(_compute_spatial_relationships(object_entries))
+    spatial_relations = _compute_spatial_relationships(object_entries)
+    edges = sorted(set(spatial_relations) | relation_set)
 
     # Ensure uniqueness while preserving deterministic order.
     nodes = sorted(dict.fromkeys(nodes))
@@ -123,7 +145,8 @@ def _object_state_tags(obj: Dict[str, Any], inventory_ids: Iterable[str]) -> Lis
         tags.append("visible")
     if obj.get("pickupable"):
         tags.append("pickupable")
-    if obj.get("isPickedUp") or _normalise_object_id(obj.get("objectId")) in inventory_ids:
+    obj_id_norm = _normalise_object_id(obj.get("objectId"))
+    if obj.get("isPickedUp") or obj_id_norm in inventory_ids:
         tags.append("held")
     if obj.get("openable"):
         tags.append("open" if obj.get("isOpen") else "closed")
@@ -139,6 +162,9 @@ def _object_state_tags(obj: Dict[str, Any], inventory_ids: Iterable[str]) -> Lis
     temperature = obj.get("temperature") or obj.get("ObjectTemperature")
     if isinstance(temperature, str) and temperature:
         tags.append(f"temp:{temperature.lower()}")
+
+    if obj.get("canFillWithLiquid") and obj.get("isFilledWithLiquid"):
+        tags.append("filled")
 
     return tags or ["default"]
 
@@ -168,6 +194,26 @@ def _normalise_object_id(object_id: Any) -> str:
     if isinstance(object_id, str):
         return object_id.strip()
     return str(object_id)
+
+
+def _type_aliases(object_type: str) -> Iterable[str]:
+    aliases = {object_type}
+    lower = object_type.lower()
+    if "bottle" in lower:
+        aliases.add("Bottle")
+    if "wine" in lower and "winebottle" not in aliases:
+        aliases.add("WineBottle")
+    if "cup" in lower:
+        aliases.add("Cup")
+    if "mug" in lower:
+        aliases.add("Mug")
+    if "bowl" in lower:
+        aliases.add("Bowl")
+    if "kettle" in lower:
+        aliases.add("Kettle")
+    if "wateringcan" in lower:
+        aliases.add("WateringCan")
+    return aliases
 
 
 class _BoundingBox:
@@ -300,8 +346,3 @@ def _is_inside(inner: _BoundingBox, outer: _BoundingBox, margin: float = 0.02) -
         and inner.min[2] >= outer.min[2] - margin
         and inner.max[2] <= outer.max[2] + margin
     )
-
-trace = "logs/trajectories/trial_T20190909_135724_571540/r0_20250919_002926.json"
-ctl_sequence = trace_file_to_ctl_sequence(trace)
-with open("test.json", "w") as f:
-    json.dump(ctl_sequence, f, indent=2)

@@ -148,16 +148,30 @@ class CTLExpression(object):
 class CTLPrimitive(CTLExpression):
     def __init__(self, prop_or_action: Union[Proposition, Action]):
         super().__init__(is_state_goal=True)
-        self.prop_or_action = prop_or_action
-        self.is_proposition = isinstance(prop_or_action, Proposition)
-        self.is_action = isinstance(prop_or_action, Action)
+        if isinstance(prop_or_action, Proposition):
+            self.prop_or_action = prop_or_action
+            self.is_proposition = True
+            self.is_action = False
+        elif isinstance(prop_or_action, Action):
+            self.prop_or_action = prop_or_action
+            self.is_proposition = False
+            self.is_action = True
+        elif hasattr(prop_or_action, 'name') and hasattr(prop_or_action, 'args'):
+            self.prop_or_action = Proposition(prop_or_action.name, list(prop_or_action.args))
+            self.is_proposition = True
+            self.is_action = False
+        else:
+            self.prop_or_action = prop_or_action
+            self.is_proposition = False
+            self.is_action = False
 
     def __str__(self):
         return str(self.prop_or_action)
 
     def ground(self, variable_mapping: Dict[str, str]):
         if self.is_proposition:
-            return CTLPrimitive(Proposition(self.prop_or_action.name, [variable_mapping.get(arg, arg) for arg in self.prop_or_action.args]))
+            base = self.prop_or_action if isinstance(self.prop_or_action, Proposition) else Proposition(self.prop_or_action.name, list(self.prop_or_action.args))
+            return CTLPrimitive(Proposition(base.name, [variable_mapping.get(arg, arg) for arg in base.args]))
         elif self.is_action:
             return CTLPrimitive(Action(self.prop_or_action.name, [variable_mapping.get(arg, arg) for arg in self.prop_or_action.args]))
 
