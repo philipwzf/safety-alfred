@@ -105,7 +105,8 @@ class EvalLLM:
             print(f"Task description: {traj_data['turk_annotations']['anns'][0]['task_desc']}")
             
             # Run evaluation on single trajectory
-            self.evaluate(env, 0, traj_data, self.args, lock, successes, failures, results, goto=goto)
+            r_idx = 1  # TODO: Allow user to specify index if needed
+            self.evaluate(env, r_idx, traj_data, self.args, lock, successes, failures, results, goto=goto)
 
         except Exception as e:
             print(f"Error during evaluation: {e}")
@@ -169,8 +170,6 @@ class EvalLLM:
         try:
             # Use the same direct execution approach as eval_llm_step.py
             event, api_action = env.to_thor_api_exec(action_name, object_id, smooth_nav=smooth_nav)
-            if "Microwave" in object_id and action_name == "OpenObject":
-                breakpoint()
             success = event.metadata['lastActionSuccess']
             error = event.metadata.get('errorMessage', '') if not success else ''
             self.log(f"Action: {action_name}, Object ID: {object_id}, Success: {success}, Error: {error}")
@@ -273,11 +272,11 @@ class EvalLLM:
 
             plw_s_spl = s_spl * path_len_weight
             plw_pc_spl = pc_spl * path_len_weight
+            
 
             lock.acquire()
             log_entry = {
                 'trial': traj_data['task_id'],
-                'type': traj_data['task_type'],
                 'repeat_idx': int(r_idx),
                 'goal_instr': goal_instr,
                 'completed_goal_conditions': int(pcs[0]),
@@ -290,12 +289,13 @@ class EvalLLM:
                 'path_len_weight': int(path_len_weight),
                 'reward': float(reward),
                 'llm_plan_length': len(llm_plan),
-                'executed_actions': action_idx,
+                'steps_failed': int(fails),
                 'trajectory': trace.export(),
             }
             # Write trace in a json file
             log_dir = os.path.dirname(self.log_file)
-            traj_log_file = os.path.join(log_dir, "trajectories",f"{traj_data['task_id']}",f"r{r_idx}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            traj_path = args.traj_file.replace("data/json_2.1.0/", "").replace("/traj_data.json", "")
+            traj_log_file = os.path.join(log_dir, "trajectories", traj_path,f"r{r_idx}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
             os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
 
             with open(traj_log_file, 'w', encoding='utf-8') as f:
