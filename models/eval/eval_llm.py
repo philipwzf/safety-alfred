@@ -75,7 +75,7 @@ class EvalLLM:
             with open(self.log_file, 'a', encoding='utf-8') as f:
                 f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
 
-    def test_single_trajectory(self, traj_file_path=None, goto=False):
+    def test_single_trajectory(self, traj_file_path=None, goto=False, r_idx=0):
         """
         Test evaluation on a single trajectory
         """
@@ -105,7 +105,6 @@ class EvalLLM:
             print(f"Task description: {traj_data['turk_annotations']['anns'][0]['task_desc']}")
             
             # Run evaluation on single trajectory
-            r_idx = 1  # TODO: Allow user to specify index if needed
             self.evaluate(env, r_idx, traj_data, self.args, lock, successes, failures, results, goto=goto)
 
         except Exception as e:
@@ -201,6 +200,8 @@ class EvalLLM:
 
             # goal instruction
             goal_instr = traj_data['turk_annotations']['anns'][r_idx]['task_desc']
+            if traj_data.get('task_desc', None):
+                goal_instr = traj_data['task_desc']  # use more detailed task_desc if available
 
             # Log task info
             self.log(f"Task: {goal_instr}")
@@ -398,6 +399,7 @@ if __name__ == "__main__":
     parser.add_argument('--split', type=str, default='valid_seen', help='Data split to evaluate')
     parser.add_argument('--data_dir', type=str, default='data/json_2.1.0', help='Data directory')
     parser.add_argument('--num_runs', type=int, default=5, help='Number of runs per trajectory')
+    parser.add_argument('ridx', type=int, default=0, nargs='?', help='Repeat index for single trajectory test')
     
 
     args = parser.parse_args()
@@ -406,4 +408,4 @@ if __name__ == "__main__":
     if args.batch:
         evaluator.test_batch(args.data_dir, args.split, args.num_runs)
     else:
-        evaluator.test_single_trajectory(args.traj_file)
+        evaluator.test_single_trajectory(args.traj_file, r_idx=args.ridx)

@@ -5501,6 +5501,7 @@
     },
     "task_id": "trial_T20190909_081855_856149",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Put a candle on a Cart.",
     "turk_annotations": {
         "anns": [
             {
