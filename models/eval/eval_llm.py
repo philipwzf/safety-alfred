@@ -314,8 +314,10 @@ class EvalLLM:
             os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
 
             with open(traj_log_file, 'w', encoding='utf-8') as f:
-                # write trace.export() to json
-                json.dump(trace.export(), f, indent=2)
+                json.dump({
+                    'trajectory': trace.export(),
+                    'success': bool(success)
+                }, f, indent=2)
                 print(f"Saved trajectory log to {traj_log_file}")
 
             if success:
