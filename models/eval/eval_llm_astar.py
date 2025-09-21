@@ -230,8 +230,10 @@ if __name__ == "__main__":
     parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
     parser.add_argument('--presence_penalty', type=float, default=0.0, help='Presence penalty for LLM')
+    parser.add_argument('--ridx', type=int, default=0, nargs='?', help='Repeat index for single trajectory test')
+
     
     args = parser.parse_args()
 
     evaluator = EvalLLMAstar(args)
-    evaluator.test_single_trajectory(args.traj_file, goto=True, inject_danger=True)
+    evaluator.test_single_trajectory(args.traj_file, goto=True, r_idx=args.ridx, inject_danger=True)
