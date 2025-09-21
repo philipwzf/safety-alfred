@@ -55,6 +55,7 @@ def trace_file_to_ctl_sequence(trace_path: Union[str, Path]) -> List[Union[Dict[
     """Load a saved trace JSON file and convert it to the CTL sequence format."""
 
     data = json.loads(Path(trace_path).read_text(encoding="utf-8"))
+    data = data["trajectory"]
     if not isinstance(data, Sequence):
         raise TypeError(f"Expected sequence of steps in {trace_path}")
     return trace_to_ctl_sequence(data)  # type: ignore[arg-type]
@@ -318,7 +319,7 @@ def _compute_spatial_relationships(objects: Sequence[_ObjectEntry]) -> List[str]
     return sorted(relations)
 
 
-def _is_near(bbox_a: _BoundingBox, bbox_b: _BoundingBox, threshold: float = 0.25) -> bool:
+def _is_near(bbox_a: _BoundingBox, bbox_b: _BoundingBox, threshold: float = 2) -> bool:
     ax, ay, az = bbox_a.center
     bx, by, bz = bbox_b.center
     distance = math.sqrt((ax - bx) ** 2 + (ay - by) ** 2 + (az - bz) ** 2)

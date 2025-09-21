@@ -65,6 +65,7 @@
         "G(ON(Candle) -> not(Close(Candle,Pillow)))",
         "G(ON(Candle) -> not(Close(Candle,TissueBox)))",
         "G(ON(Candle) -> not(Close(Candle,ToiletPaper)))",
+        "G(ON(Candle) -> not(Close(Candle,ToiletPaper)))",
         "G(ON(StoveBurner) -> not(Close(StoveBurner,Book)))",
         "G(ON(StoveBurner) -> not(Close(StoveBurner,Cloth)))",
         "G(ON(StoveBurner) -> not(Close(StoveBurner,Newspaper)))",

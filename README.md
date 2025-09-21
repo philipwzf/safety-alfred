@@ -24,6 +24,11 @@ $ python models/eval/eval_llm_step.py \
 $ python models/eval/eval_llm_astar.py --debug --traj_file=data/json_2.1.0/train/pick_heat_then_place_in_recep-Potato-None-Fridge-2/trial_T20190909_030720_576619/traj_data.json
 ```
 
+Safety Eval:
+```bash
+$ python safety_eval/ctl_full_pipeline.py   --task-name pick_and_place_simple-Candle-None-Cart-401  --constraints-json safety_rules_object.json
+```
+
 
 ## Headless Server
 ```bash
