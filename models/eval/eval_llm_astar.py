@@ -234,4 +234,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     evaluator = EvalLLMAstar(args)
-    evaluator.test_single_trajectory(args.traj_file, goto=True)
+    evaluator.test_single_trajectory(args.traj_file, goto=True, inject_danger=True)

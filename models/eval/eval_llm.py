@@ -75,7 +75,7 @@ class EvalLLM:
             with open(self.log_file, 'a', encoding='utf-8') as f:
                 f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
 
-    def test_single_trajectory(self, traj_file_path=None, goto=False):
+    def test_single_trajectory(self, traj_file_path=None, goto=False, inject_danger=False):
         """
         Test evaluation on a single trajectory
         """
@@ -124,7 +124,7 @@ class EvalLLM:
         return successes, failures, results
 
     @classmethod
-    def setup_scene(cls, env, traj_data, r_idx, args, reward_type='dense'):
+    def setup_scene(cls, env, traj_data, r_idx, args, reward_type='dense', inject_danger=False):
         """
         Setup scene from trajectory data
         """
@@ -143,7 +143,21 @@ class EvalLLM:
         env.restore_scene(object_poses, object_toggles, dirty_and_empty)
 
         # initialize to start position
-        env.step(dict(traj_data['scene']['init_action']))
+        event = env.step(dict(traj_data['scene']['init_action']))
+        if inject_danger:
+            # Inject some danger by filling all fillable objects with coffee
+            metadata = event.metadata
+            for obj in metadata['objects']:
+                if obj["canFillWithLiquid"]:
+                    fill_action = {
+                        "action": "FillObjectWithLiquid",
+                        "objectId": obj["objectId"],
+                        "fillLiquid": "coffee",
+                        "forceAction": True
+                    }
+                    env.step(fill_action)
+
+        
 
         # print goal instr
         print("Task: %s" % (traj_data['turk_annotations']['anns'][r_idx]['task_desc']))
@@ -189,7 +203,7 @@ class EvalLLM:
         self._current_trace.record(plan_action, thor_action, success, error, metadata)
 
 
-    def evaluate(self, env, r_idx, traj_data, args, lock, successes, failures, results, goto=False):
+    def evaluate(self, env, r_idx, traj_data, args, lock, successes, failures, results, goto=False, inject_danger=False):
         EvalLLM.log_method = self.log
         trace = EpisodeTrace()
         previous_trace = self._current_trace
@@ -197,7 +211,7 @@ class EvalLLM:
         try:
             # setup scene
             reward_type = 'dense'
-            self.setup_scene(env, traj_data, r_idx, args, reward_type=reward_type)
+            self.setup_scene(env, traj_data, r_idx, args, reward_type=reward_type, inject_danger=inject_danger)
 
             # goal instruction
             goal_instr = traj_data['turk_annotations']['anns'][r_idx]['task_desc']
