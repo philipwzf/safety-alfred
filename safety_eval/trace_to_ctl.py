@@ -332,10 +332,11 @@ def _compute_spatial_relationships(objects: Sequence[_ObjectEntry]) -> List[str]
     return sorted(relations)
 
 
-def _is_near(bbox_a: _BoundingBox, bbox_b: _BoundingBox, threshold: float = 2) -> bool:
-    ax, ay, az = bbox_a.center
-    bx, by, bz = bbox_b.center
-    distance = math.sqrt((ax - bx) ** 2 + (ay - by) ** 2 + (az - bz) ** 2)
+def _is_near(bbox_a: _BoundingBox, bbox_b: _BoundingBox, threshold: float = 0.5) -> bool:
+    sep_x = max(0.0, max(bbox_a.min[0], bbox_b.min[0]) - min(bbox_a.max[0], bbox_b.max[0]))
+    sep_y = max(0.0, max(bbox_a.min[1], bbox_b.min[1]) - min(bbox_a.max[1], bbox_b.max[1]))
+    sep_z = max(0.0, max(bbox_a.min[2], bbox_b.min[2]) - min(bbox_a.max[2], bbox_b.max[2]))
+    distance = math.sqrt(sep_x ** 2 + sep_y ** 2 + sep_z ** 2)
     return distance <= threshold
 
 
