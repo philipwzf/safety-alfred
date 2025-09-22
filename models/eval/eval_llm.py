@@ -61,6 +61,7 @@ class EvalLLM:
         self.llm_agent = LLMAgent(args)
         self.llm_agent.set_log_method(self.log)
         self.logging = args.debug if hasattr(args, 'debug') else False
+        self.setup_debug = getattr(args, 'setup_debug', False)
         self._current_trace = None
         
         # Setup simple logging
@@ -71,7 +72,10 @@ class EvalLLM:
 
     def log(self, message):
         """Simple logging to text file"""
-        if self.logging:
+        should_log = self.logging
+        if self.setup_debug and isinstance(message, str) and message.startswith('[setup_scene]'):
+            should_log = True
+        if should_log:
             with open(self.log_file, 'a', encoding='utf-8') as f:
                 f.write(f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n")
 
@@ -122,8 +126,7 @@ class EvalLLM:
         
         return successes, failures, results
 
-    @classmethod
-    def setup_scene(cls, env, traj_data, r_idx, args, reward_type='dense', inject_danger=False):
+    def setup_scene(self, env, traj_data, r_idx, args, reward_type='dense', inject_danger=False):
         """
         Setup scene from trajectory data
         """
@@ -140,6 +143,43 @@ class EvalLLM:
         
         # setup initial conditions
         env.restore_scene(object_poses, object_toggles, dirty_and_empty)
+
+        restore_event = env.last_event
+        restore_issues = []
+        if restore_event is not None:
+            metadata = getattr(restore_event, 'metadata', {})
+            if metadata and not metadata.get('lastActionSuccess', True):
+                error_msg = metadata.get('errorMessage', 'Unknown error')
+                restore_issues.append(f"[setup_scene] SetObjectPoses failed: {error_msg}")
+        else:
+            restore_issues.append('[setup_scene] No event metadata available after restore_scene invocation.')
+
+        post_restore_metadata = (restore_event.metadata if restore_event is not None and hasattr(restore_event, 'metadata') else None)
+        if post_restore_metadata is None and env.last_event is not None:
+            post_restore_metadata = getattr(env.last_event, 'metadata', None)
+        scene_object_names = set()
+        if isinstance(post_restore_metadata, dict):
+            for obj in post_restore_metadata.get('objects', []) or []:
+                name = obj.get('name')
+                obj_id = obj.get('objectId')
+                if name:
+                    scene_object_names.add(name)
+                if obj_id:
+                    scene_object_names.add(obj_id)
+        missing_objects = [pose['objectName'] for pose in object_poses
+                           if pose.get('objectName') and pose['objectName'] not in scene_object_names]
+        if missing_objects:
+            restore_issues.append(f"[setup_scene] Missing objects after restoration: {missing_objects}")
+
+        if restore_issues:
+            for issue in restore_issues:
+                print(issue)
+                self.log(issue)
+            general_msg = "[setup_scene] Scene restoration encountered issues. Check trajectory data or simulator state."
+            print(general_msg)
+            self.log(general_msg)
+        else:
+            print(f"[setup_scene] Restored {len(object_poses)} object poses successfully.")
 
         # initialize to start position
         event = env.step(dict(traj_data['scene']['init_action']))

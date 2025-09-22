@@ -231,6 +231,7 @@ if __name__ == "__main__":
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
     parser.add_argument('--presence_penalty', type=float, default=0.0, help='Presence penalty for LLM')
     parser.add_argument('--ridx', type=int, default=0, nargs='?', help='Repeat index for single trajectory test')
+    parser.add_argument('--setup_debug', action='store_true', help='Log only setup issues for debugging scene restoration')
 
     
     args = parser.parse_args()
