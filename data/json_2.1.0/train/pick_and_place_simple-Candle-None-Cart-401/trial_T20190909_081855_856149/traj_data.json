@@ -5248,6 +5248,19 @@
         },
         "object_poses": [
             {
+                "objectName": "ToiletPaper_9553b3c5",
+                "position": {
+                    "x": -3.09,
+                    "y": 1.04,
+                    "z": 0.08
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                }
+            },
+            {
                 "objectName": "Cloth_92b40c2d",
                 "position": {
                     "x": -0.311454922,
@@ -5378,19 +5391,6 @@
                 }
             },
             {
-                "objectName": "ToiletPaper_9553b3c5",
-                "position": {
-                    "x": 0.3553664,
-                    "y": 1.04369736,
-                    "z": 3.03487039
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 270.000183,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "SoapBottle_05c74c3e",
                 "position": {
                     "x": -0.497232735,
@@ -5400,19 +5400,6 @@
                 "rotation": {
                     "x": 0.0,
                     "y": 137.956711,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "ToiletPaper_d4f809d4",
-                "position": {
-                    "x": 0.260070324,
-                    "y": 0.627567351,
-                    "z": -0.158735573
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 47.95687,
                     "z": 0.0
                 }
             },
