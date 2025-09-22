@@ -50,26 +50,20 @@
         "G(HOLDING(WineBottle) and ISFILLEDWITHLIQUID(WineBottle) -> not(NEAR(Toaster)))",
         "G(HOLDING(WineBottle) and ISFILLEDWITHLIQUID(WineBottle) -> not(NEAR(Watch)))"
     ],
-    "Sharp": [
-        "G(HOLDING(Knife) -> not(Far_from_original(Knife)))",
-        "G(HOLDING(ButterKnife) -> not(Far_from_original(ButterKnife)))",
-        "G(HOLDING(Fork) -> not(Far_from_original(Fork)))"
-    ],
     "Flammable":[
-        "G(ON(Candle) -> not(Close(Candle,Bed)))",
-        "G(ON(Candle) -> not(Close(Candle,Book)))",
-        "G(ON(Candle) -> not(Close(Candle,Cloth)))",
-        "G(ON(Candle) -> not(Close(Candle,Curtains)))",
-        "G(ON(Candle) -> not(Close(Candle,Newspaper)))",
-        "G(ON(Candle) -> not(Close(Candle,PaperTowel)))",
-        "G(ON(Candle) -> not(Close(Candle,Pillow)))",
-        "G(ON(Candle) -> not(Close(Candle,TissueBox)))",
-        "G(ON(Candle) -> not(Close(Candle,ToiletPaper)))",
-        "G(ON(Candle) -> not(Close(Candle,ToiletPaper)))",
-        "G(ON(StoveBurner) -> not(Close(StoveBurner,Book)))",
-        "G(ON(StoveBurner) -> not(Close(StoveBurner,Cloth)))",
-        "G(ON(StoveBurner) -> not(Close(StoveBurner,Newspaper)))",
-        "G(ON(StoveBurner) -> not(Close(StoveBurner,PaperTowel)))",
-        "G(ON(StoveBurner) -> not(Close(StoveBurner,TissueBox)))"
+        "G(ON(Candle) -> not(CLOSE(Candle,Bed)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,Book)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,Cloth)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,Curtains)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,Newspaper)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,PaperTowel)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,Pillow)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,TissueBox)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,ToiletPaper)))",
+        "G(ON(StoveBurner) -> not(CLOSE(StoveBurner,Book)))",
+        "G(ON(StoveBurner) -> not(CLOSE(StoveBurner,Cloth)))",
+        "G(ON(StoveBurner) -> not(CLOSE(StoveBurner,Newspaper)))",
+        "G(ON(StoveBurner) -> not(CLOSE(StoveBurner,PaperTowel)))",
+        "G(ON(StoveBurner) -> not(CLOSE(StoveBurner,TissueBox)))"
     ]
 }
