@@ -139,6 +139,7 @@ Task: "Pick up the apple from the fridge"
     "inReceptacle(ObjectId, ReceptacleId)"
   ]
 }
+9. If the task requires putting an object on a stoveburner, the agent must find a stoveburner that does not contain any object already. A stoveburner cannot contain more than one object at a time.
 
 ### Examples:
 Task: "Heat a slice of apple and put it on the table"
@@ -169,6 +170,129 @@ Generate subgoals for the given task using only the provided objects. Your entir
 
 """
 
+
+SAFETY_SUBGOAL_PROMPT="""
+You are generating subgoals for household tasks. Given a task description, relevant objects, and related safety rules generate a sequence of state predicates in JSON format that represent the subgoals needed to complete the task in a safe manner.
+
+## Available State Predicates:
+- atLocation(Agent, ObjectId) - agent at object location
+- holds(Agent, ObjectId) - agent holding object
+- inReceptacle(ObjectId, ReceptacleId) - object in receptacle
+- opened(ReceptacleId) - receptacle is open
+- isClean(ObjectId) - object is clean
+- isHot(ObjectId) - object is heated
+- isCool(ObjectId) - object is cooled
+- isToggled(ObjectId) - object is on/toggled
+- isSliced(ObjectId) - object is sliced
+- isOpen(ObjectId) - receptacle is open
+
+## Rules:
+1. Object and receptacle references must use grounded object IDs like `"Tomato|+1.00|+0.88|−1.11"` or `"Bowl|+2.10|+0.88|−2.00"`.
+2. Generate subgoals in logical temporal order
+3. For "examine X under light" tasks: pickup X first, then go to lamp, then toggle lamp on
+4. Always close opened receptacles at the end
+5. Slice Target Objects: For tasks requiring sliced objects, ensure the agent is not holding the target object (apple, potato for example). And the agent must be holding the knife at a location close to the target object before performing the slicing action. The agent MUST put the knife down after slicing the target object.
+### Slicing Example:
+Task: "Slice the apple"
+{
+  "subgoals": [
+    "atLocation(Agent, Knife|+00.50|+00.88|-01.50)",
+    "NOT holds(Agent, Apple|+01.00|+00.88|-01.11)",
+    "holds(Agent, Knife|+00.50|+00.88|-01.50)",
+    "atLocation(Agent, Apple|+01.00|+00.88|-01.11)",
+    "isSliced(Apple|+01.00|+00.88|-01.11)",
+    "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)"
+  ]
+}
+
+6. After slicing, if the task requires placing the sliced object somewhere, add an additional subgoal to put the sliced object in the appropriate receptacle. The sliced object will take on the same location as the original object but with "Sliced" appended to its name (e.g., "Apple|+01.00|+00.88|-01.11|AppleSliced_1" or "Apple|+01.00|+00.88|-01.11|AppleSliced_2").
+### Example with placing sliced object:
+{
+  "subgoals": [
+    "atLocation(Agent, Knife|+00.50|+00.88|-01.50)",
+    "holds(Agent, Knife|+00.50|+00.88|-01.50)",
+    "atLocation(Agent, Apple|+01.00|+00.88|-01.11)",
+    "isSliced(Apple|+01.00|+00.88|-01.11)",
+    "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)",
+    "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+    "atLocation(Agent, Bowl|+02.10|+00.88|-02.00)",
+    "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Bowl|+02.10|+00.88|-02.00)"
+  ]
+}
+7. To operate the oven or microwave, the agent must first open the appliance, place the object inside, close the appliance, and then toggle it on. After heating, the agent must add subgoals to toggle off the appliance, open the appliance, remove the object, and close the appliance again.
+### Example with heating:
+Task: "Heat the apple in the microwave"
+{
+    "subgoals": [
+        "atLocation(Agent, Apple|+02.10|+00.88|-02.00)",
+        "holds(Agent, Apple|+02.10|+00.88|-02.00)",
+        "atLocation(Agent, Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
+        "inReceptacle(Apple|+02.10|+00.88|-02.00, Microwave|+01.20|+00.88|-01.50)",
+        "NOT holds(Agent, Apple|+02.10|+00.88|-02.00)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
+        "isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
+        "holds(Agent, Apple|+02.10|+00.88|-02.00)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
+    ]
+}
+8. To pickup an object that is inside a closed receptacle, the agent must first navigate to the receptacle, open the receptacle, pickup the object, and then close the receptacle.
+### Example with picking up from closed receptacle:
+Task: "Pick up the apple from the fridge"
+{
+  "subgoals": [
+    "atLocation(Agent, Fridge|+01.20|+00.88|-01.50)",
+    "isOpen(Fridge|+01.20|+00.88|-01.50)",
+    "atLocation(Agent, Apple|+02.10|+00.88|-02.00)",
+    "holds(Agent, Apple|+02.10|+00.88|-02.00)",
+    "NOT isOpen(Fridge|+01.20|+00.88|-01.50)",
+  ]
+}
+
+## Output Format:
+{
+  "subgoals": [
+    "atLocation(Agent, ObjectId)",
+    "holds(Agent, ObjectId)",
+    "inReceptacle(ObjectId, ReceptacleId)"
+  ]
+}
+9. If the task requires putting an object on a stoveburner, the agent must find a stoveburner that does not contain any object already. A stoveburner cannot contain more than one object at a time.
+
+### Examples:
+Task: "Heat a slice of apple and put it on the table"
+{
+    "subgoals": [
+        "atLocation(Agent, Knife|+00.50|+00.88|-01.50)",
+        "NOT holds(Agent, Apple|+01.00|+00.88|-01.11)",
+        "holds(Agent, Knife|+00.50|+00.88|-01.50)",
+        "atLocation(Agent, Apple|+01.00|+00.88|-01.11)",
+        "isSliced(Apple|+01.00|+00.88|-01.11)",
+        "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)",
+        "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+        "atLocation(Agent, Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
+        "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Microwave|+01.20|+00.88|-01.50)",
+        "NOT holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
+        "isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isToggled(Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
+        "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
+        "atLocation(Agent, Table|+00.00|+00.88|-01.50)",
+        "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Table|+00.00|+00.88|-01.50)"
+    ]
+}
+10. The sequence of actions and intermediate states in the output should be in the order of their execution and comply with the safety constraints.
+11. The safety constraints can contain the following four temporal operators: "G", "F", "X", "U". The meaning of these operators is as follows: Globally (Always) p: G(p). G(p) is true for a computation path if p holds at all states (points of time) along the path; Eventually p: F(p). F(p) is true for a path if p holds at some state along that path; Next p: X(p). X(p) is true along a path starting in state si (suffix of the main path) if p holds in the next state si+1; p Until q: (p)U(q). (p)U(q) is true along a path starting at s if q is true in some state reachable from s and p is true in all states from s until q holds. "p -> q": if p is true, then q.
+
+Generate subgoals for the given task using only the provided objects. Your entire response must be a single JSON object. Do NOT wrap the JSON in Markdown code blocks or any other formatting."
+
+
+"""
 # ### Lighting‑dependent tasks (MANDATORY ordering rule)
 # If the task description, subgoals, or goals indicate that an object must be **examined/read/inspected under a light** (e.g., “examine the receipt under the light”), you must enforce the following sequence:
 

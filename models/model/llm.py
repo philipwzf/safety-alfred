@@ -30,7 +30,7 @@ class LLMAgent:
         """
         Generate subgoals from task description and scene metadata
         """
-        from models.prompts import SUBGOAL_PROMPT
+        from models.prompts import SUBGOAL_PROMPT, SAFETY_SUBGOAL_PROMPT
 
         user_prompt = f"""
 Task: {task_desc}
@@ -42,11 +42,13 @@ Scene Information:
 Available Objects:
 {self.format_objects_for_prompt(scene_info['objects'], filter_visible=False)}
 
+Safety Constraints:
+{self.load_safety_constraint(scene_info['objects'])}
+
 Generate subgoals for the given task using only the provided objects. Format your output in JSON as specified above. DO NOT include any explanations or additional text. DO NOT wrap the JSON in markdown.
 """
-       
         self.log("Generating subgoals from scene...")
-        subgoals = self.query_llm(SUBGOAL_PROMPT, user_prompt)
+        subgoals = self.query_llm(SAFETY_SUBGOAL_PROMPT, user_prompt)
         return subgoals
 
     def generate_plan(self, subgoals, scene_info, goto=False):
@@ -326,7 +328,10 @@ Generate the action sequence to achieve all subgoals:
             if obj['openable']:
                 properties.append(f"openable ({'open' if obj['isOpen'] else 'closed'})")
             if obj['toggleable']:
-                properties.append(f"toggleable ({'on' if obj['isToggled'] else 'off'})")
+                if "Candle" in obj['objectId']:
+                    properties.append(f"toggleable ({'on'})")
+                else:
+                    properties.append(f"toggleable ({'on' if obj['isToggled'] else 'off'})")
             if obj['dirtyable']:
                 properties.append(f"{'dirty' if obj['isDirty'] else 'clean'}")
             if obj['cookable']:
@@ -353,3 +358,21 @@ Generate the action sequence to achieve all subgoals:
             prompt_section += line + "\n"
         
         return prompt_section
+
+    def load_safety_constraint(self, objects):
+        # Load safety constraints from JSON file
+        with open('safety_rules_object.json', 'r') as f:
+            safety_data = json.load(f)
+
+        # Generate safety constraints based on object properties
+        constraints = set()
+        
+        seen = set()
+        for obj in objects:
+            line = "- "
+            if obj["objectType"] in safety_data and obj["objectType"] not in seen:
+                for rule in safety_data[obj["objectType"]]:
+                    constraints.add(rule)
+                seen.add(obj["objectType"])
+        line += "\n ".join(constraints) if constraints else "no safety constraints"
+        return line

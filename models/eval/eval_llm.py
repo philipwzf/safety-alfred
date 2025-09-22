@@ -154,8 +154,7 @@ class EvalLLM:
         if restore_event is not None:
             metadata = getattr(restore_event, 'metadata', {})
             if metadata and not metadata.get('lastActionSuccess', True):
-                error_msg = metadata.get('errorMessage', 'Unknown error')
-                restore_issues.append(f"[setup_scene] SetObjectPoses failed: {error_msg}")
+                restore_issues.append(f"[setup_scene] SetObjectPoses failed: {metadata.get('errorMessage')}")
         else:
             restore_issues.append('[setup_scene] No event metadata available after restore_scene invocation.')
 
