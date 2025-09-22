@@ -67,7 +67,12 @@ class EvalLLM:
         # Setup simple logging
         os.makedirs('logs', exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.log_file = f"logs/llm_eval_{timestamp}.txt"
+        traj_path = args.traj_file.replace("data/json_2.1.0/", "").replace("/traj_data.json", "")
+        traj_log_file = os.path.join("logs", "trajectories", traj_path,f"r{args.ridx}_{timestamp}.json")
+        os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
+        log_file = traj_log_file.replace(".json", ".txt")
+        self.log_file = log_file
+        self.trace_file = traj_log_file
         print(f"Logging to: {self.log_file}")
 
     def log(self, message):
@@ -360,17 +365,14 @@ class EvalLLM:
                 'trajectory': trace.export(),
             }
             # Write trace in a json file
-            log_dir = os.path.dirname(self.log_file)
-            traj_path = args.traj_file.replace("data/json_2.1.0/", "").replace("/traj_data.json", "")
-            traj_log_file = os.path.join(log_dir, "trajectories", traj_path,f"r{r_idx}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
+            
 
-            with open(traj_log_file, 'w', encoding='utf-8') as f:
+            with open(self.trace_file, 'w', encoding='utf-8') as f:
                 json.dump({
                     'trajectory': trace.export(),
                     'success': bool(success)
                 }, f, indent=2)
-                print(f"Saved trajectory log to {traj_log_file}")
+                print(f"Saved trajectory log to {self.trace_file}")
 
             if success:
                 successes.append(log_entry)
