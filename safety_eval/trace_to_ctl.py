@@ -76,64 +76,75 @@ def _state_from_metadata(metadata: Dict[str, Any]) -> Dict[str, List[str]]:
 
     object_entries: List[_ObjectEntry] = []
     relation_set: set[str] = set()
+    type_to_states: Dict[str, set[str]] = {}
+    id_to_type: Dict[str, str] = {}
 
-    # Build object-centric state strings.
-    inventory_lookup = inventory_ids
-
+    # Build object-centric state strings using object types.
     for obj in metadata.get("objects", []) or []:
         object_id = _normalise_object_id(obj.get("objectId") or obj.get("name"))
         if not object_id:
             continue
 
-        state_tags = _object_state_tags(obj, inventory_lookup)
         object_type = obj.get("objectType") or object_id.split("|")[0]
+        id_to_type[object_id] = object_type
+
+        state_tags = _object_state_tags(obj, inventory_ids)
+        type_states = type_to_states.setdefault(object_type, set())
+        type_states.update(state_tags)
 
         if object_id in inventory_ids:
-            state_tags.append("held")
+            type_states.add("held")
             for alias in _type_aliases(object_type):
                 relation_set.add(f"HOLDING({alias})")
-            relation_set.add(f"HOLDING({object_id})")
 
         if obj.get("canFillWithLiquid") and obj.get("isFilledWithLiquid"):
             for alias in _type_aliases(object_type):
                 relation_set.add(f"ISFILLEDWITHLIQUID({alias})")
-            relation_set.add(f"ISFILLEDWITHLIQUID({object_id})")
 
-        nodes.append(f"{object_id}, states:[{', '.join(sorted(set(state_tags)))}]")
+        if obj.get("toggleable"):
+            predicate = "ON" if obj.get("isToggled") else "OFF"
+            for alias in _type_aliases(object_type):
+                relation_set.add(f"{predicate}({alias})")
 
         bbox = _extract_bounding_box(obj.get("objectBounds"))
-        parent_recs = {
-            _normalise_object_id(rec)
-            for rec in (obj.get("parentReceptacles") or [])
-            if _normalise_object_id(rec)
-        }
-        receptacle_contents = {
-            _normalise_object_id(child)
-            for child in (obj.get("receptacleObjectIds") or [])
-            if _normalise_object_id(child)
-        }
-        object_entries.append(_ObjectEntry(object_id, bbox, parent_recs, receptacle_contents))
+        parent_recs: set[str] = set()
+        for rec in obj.get("parentReceptacles") or []:
+            rec_norm = _normalise_object_id(rec)
+            if not rec_norm:
+                continue
+            parent_recs.add(id_to_type.get(rec_norm, rec_norm.split("|")[0]))
+
+        receptacle_contents: set[str] = set()
+        for child in obj.get("receptacleObjectIds") or []:
+            child_norm = _normalise_object_id(child)
+            if not child_norm:
+                continue
+            receptacle_contents.add(id_to_type.get(child_norm, child_norm.split("|")[0]))
+        object_entries.append(
+            _ObjectEntry(object_id, object_type, bbox, parent_recs, receptacle_contents)
+        )
 
     # Agent as an object for relational checks.
     agent_meta = metadata.get("agent", {}) or {}
-    agent_states = []
+    agent_states: set[str] = set()
     if agent_meta.get("isStanding"):
-        agent_states.append("standing")
+        agent_states.add("standing")
     if agent_meta.get("isCrouching"):
-        agent_states.append("crouching")
+        agent_states.add("crouching")
     if agent_meta.get("isFalling"):
-        agent_states.append("falling")
+        agent_states.add("falling")
     for inv in raw_inventory:
         inv_id = _normalise_object_id(inv.get("objectId") or inv.get("name"))
         if inv_id:
-            agent_states.append(f"holding:{inv_id}")
-    nodes.append(f"agent, states:[{', '.join(agent_states) if agent_states else 'present'}]")
-    object_entries.append(_ObjectEntry("agent", _agent_bounding_box(agent_meta)))
+            agent_states.add(f"holding:{inv_id}")
+    type_to_states.setdefault("agent", set()).update(agent_states or {"present"})
+    object_entries.append(_ObjectEntry("agent", "agent", _agent_bounding_box(agent_meta)))
+
+    for object_type, state_tags in sorted(type_to_states.items()):
+        nodes.append(f"{object_type}, states:[{', '.join(sorted(state_tags))}]")
+
     spatial_relations = _compute_spatial_relationships(object_entries)
     edges = sorted(set(spatial_relations) | relation_set)
-
-    # Ensure uniqueness while preserving deterministic order.
-    nodes = sorted(dict.fromkeys(nodes))
 
     return {"nodes": nodes, "edges": edges}
 
@@ -231,16 +242,18 @@ class _BoundingBox:
 
 
 class _ObjectEntry:
-    __slots__ = ("identifier", "bbox", "parent_receptacles", "receptacle_contents")
+    __slots__ = ("identifier", "object_type", "bbox", "parent_receptacles", "receptacle_contents")
 
     def __init__(
         self,
         identifier: str,
+        object_type: str,
         bbox: Optional[_BoundingBox],
         parent_receptacles: Optional[Iterable[str]] = None,
         receptacle_contents: Optional[Iterable[str]] = None,
     ):
         self.identifier = identifier
+        self.object_type = object_type
         self.bbox = bbox
         self.parent_receptacles = frozenset(filter(None, parent_receptacles or []))
         self.receptacle_contents = frozenset(filter(None, receptacle_contents or []))
@@ -293,27 +306,27 @@ def _compute_spatial_relationships(objects: Sequence[_ObjectEntry]) -> List[str]
                 continue
 
             if (
-                obj_b.identifier in obj_a.parent_receptacles
-                or obj_a.identifier in obj_b.receptacle_contents
+                obj_b.object_type in obj_a.parent_receptacles
+                or obj_a.object_type in obj_b.receptacle_contents
             ):
-                relations.add(f"INSIDE({obj_a.identifier}, {obj_b.identifier})")
+                relations.add(f"INSIDE({obj_a.object_type}, {obj_b.object_type})")
 
             bbox_b = obj_b.bbox
             if bbox_b is None:
                 continue
 
             if _is_inside(bbox_a, bbox_b):
-                relations.add(f"INSIDE({obj_a.identifier}, {obj_b.identifier})")
+                relations.add(f"INSIDE({obj_a.object_type}, {obj_b.object_type})")
 
             if _is_on_top(bbox_a, bbox_b):
-                relations.add(f"ONTOP({obj_a.identifier}, {obj_b.identifier})")
+                relations.add(f"ONTOP({obj_a.object_type}, {obj_b.object_type})")
 
         for obj_b in objects[i + 1 :]:
             bbox_b = obj_b.bbox
             if bbox_b is None:
                 continue
             if _is_near(bbox_a, bbox_b):
-                first, second = sorted([obj_a.identifier, obj_b.identifier])
+                first, second = sorted([obj_a.object_type, obj_b.object_type])
                 relations.add(f"NEAR({first}, {second})")
 
     return sorted(relations)
