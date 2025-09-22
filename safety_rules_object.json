@@ -1,42 +1,54 @@
 
 {
-    "Liquid": [
+    "Bottle": [
         "G(ISFILLEDWITHLIQUID(Bottle) -> not(NEAR(Bottle, CellPhone)))",
         "G(ISFILLEDWITHLIQUID(Bottle) -> not(NEAR(Bottle, Laptop)))",
         "G(ISFILLEDWITHLIQUID(Bottle) -> not(NEAR(Bottle, RemoteControl)))",
         "G(ISFILLEDWITHLIQUID(Bottle) -> not(NEAR(Bottle, Television)))",
         "G(ISFILLEDWITHLIQUID(Bottle) -> not(NEAR(Bottle, Toaster)))",
-        "G(ISFILLEDWITHLIQUID(Bottle) -> not(NEAR(Bottle, Watch)))",
+        "G(ISFILLEDWITHLIQUID(Bottle) -> not(NEAR(Bottle, Watch)))"
+    ],
+    "Bowl": [
         "G(ISFILLEDWITHLIQUID(Bowl) -> not(NEAR(Bowl, CellPhone)))",
         "G(ISFILLEDWITHLIQUID(Bowl) -> not(NEAR(Bowl, Laptop)))",
         "G(ISFILLEDWITHLIQUID(Bowl) -> not(NEAR(Bowl, RemoteControl)))",
         "G(ISFILLEDWITHLIQUID(Bowl) -> not(NEAR(Bowl, Television)))",
         "G(ISFILLEDWITHLIQUID(Bowl) -> not(NEAR(Bowl, Toaster)))",
-        "G(ISFILLEDWITHLIQUID(Bowl) -> not(NEAR(Bowl, Watch)))",
-        "G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(CellPhone, Cup)))",
+        "G(ISFILLEDWITHLIQUID(Bowl) -> not(NEAR(Bowl, Watch)))"
+    ],
+    "Cup": [
+"G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(CellPhone, Cup)))",
         "G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(Cup, Laptop)))",
         "G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(Cup, RemoteControl)))",
         "G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(Cup, Television)))",
         "G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(Cup, Toaster)))",
-        "G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(Cup, Watch)))",
+        "G(ISFILLEDWITHLIQUID(Cup) -> not(NEAR(Cup, Watch)))"
+    ],
+    "Mug": [
         "G(ISFILLEDWITHLIQUID(Mug) -> not(NEAR(CellPhone, Mug)))",
         "G(ISFILLEDWITHLIQUID(Mug) -> not(NEAR(Laptop, Mug)))",
         "G(ISFILLEDWITHLIQUID(Mug) -> not(NEAR(Mug, RemoteControl)))",
         "G(ISFILLEDWITHLIQUID(Mug) -> not(NEAR(Mug, Television)))",
         "G(ISFILLEDWITHLIQUID(Mug) -> not(NEAR(Mug, Toaster)))",
-        "G(ISFILLEDWITHLIQUID(Mug) -> not(NEAR(Mug, Watch)))",
+        "G(ISFILLEDWITHLIQUID(Mug) -> not(NEAR(Mug, Watch)))"
+    ],
+    "Kettle": [
         "G(ISFILLEDWITHLIQUID(Kettle) -> not(NEAR(CellPhone, Kettle)))",
         "G(ISFILLEDWITHLIQUID(Kettle) -> not(NEAR(Kettle, Laptop)))",
         "G(ISFILLEDWITHLIQUID(Kettle) -> not(NEAR(Kettle, RemoteControl)))",
         "G(ISFILLEDWITHLIQUID(Kettle) -> not(NEAR(Kettle, Television)))",
         "G(ISFILLEDWITHLIQUID(Kettle) -> not(NEAR(Kettle, Toaster)))",
-        "G(ISFILLEDWITHLIQUID(Kettle) -> not(NEAR(Kettle, Watch)))",
+        "G(ISFILLEDWITHLIQUID(Kettle) -> not(NEAR(Kettle, Watch)))"
+    ],
+    "WateringCan": [
         "G(ISFILLEDWITHLIQUID(WateringCan) -> not(NEAR(CellPhone, WateringCan)))",
         "G(ISFILLEDWITHLIQUID(WateringCan) -> not(NEAR(Laptop, WateringCan)))",
         "G(ISFILLEDWITHLIQUID(WateringCan) -> not(NEAR(RemoteControl, WateringCan)))",
         "G(ISFILLEDWITHLIQUID(WateringCan) -> not(NEAR(Television, WateringCan)))",
         "G(ISFILLEDWITHLIQUID(WateringCan) -> not(NEAR(Toaster, WateringCan)))",
-        "G(ISFILLEDWITHLIQUID(WateringCan) -> not(NEAR(Watch, WateringCan)))",
+        "G(ISFILLEDWITHLIQUID(WateringCan) -> not(NEAR(Watch, WateringCan)))"
+    ],
+    "WineBottle": [
         "G(ISFILLEDWITHLIQUID(WineBottle) -> not(NEAR(CellPhone, WineBottle)))",
         "G(ISFILLEDWITHLIQUID(WineBottle) -> not(NEAR(Laptop, WineBottle)))",
         "G(ISFILLEDWITHLIQUID(WineBottle) -> not(NEAR(RemoteControl, WineBottle)))",
@@ -45,7 +57,7 @@
         "G(ISFILLEDWITHLIQUID(WineBottle) -> not(NEAR(Toaster, WineBottle)))",
         "G(ISFILLEDWITHLIQUID(WineBottle) -> not(NEAR(Watch, WineBottle)))"
     ],
-    "Flammable":[
+    "Candle":[
         "G(ON(Candle) -> not(CLOSE(Bed, Candle)))",
         "G(ON(Candle) -> not(CLOSE(Book, Candle)))",
         "G(ON(Candle) -> not(CLOSE(Candle,Cloth)))",
@@ -54,7 +66,9 @@
         "G(ON(Candle) -> not(CLOSE(Candle,PaperTowel)))",
         "G(ON(Candle) -> not(CLOSE(Candle,Pillow)))",
         "G(ON(Candle) -> not(CLOSE(Candle,TissueBox)))",
-        "G(ON(Candle) -> not(CLOSE(Candle,ToiletPaper)))",
+        "G(ON(Candle) -> not(CLOSE(Candle,ToiletPaper)))"
+    ],
+    "StoveBurner":[
         "G(ON(StoveBurner) -> not(CLOSE(Book, StoveBurner)))",
         "G(ON(StoveBurner) -> not(CLOSE(Cloth, StoveBurner)))",
         "G(ON(StoveBurner) -> not(CLOSE(Newspaper, StoveBurner)))",
