@@ -335,6 +335,12 @@ Generate the action sequence to achieve all subgoals:
                 properties.append("sliced")
             if obj['ObjectTemperature'] != 'RoomTemp':
                 properties.append(f"temperature: {obj['ObjectTemperature']}")
+            if obj['parentReceptacles']:
+                properties.append(f"in receptacle: {', '.join(obj['parentReceptacles'])}")
+            if obj['receptacleObjectIds']:
+                properties.append(f"contains {len(obj['receptacleObjectIds'])} items, including:")
+                for rec_id in obj['receptacleObjectIds']:
+                    properties.append(f" {rec_id};")
 
             line += ", ".join(properties) if properties else "no special properties"
             line += f" at {obj['position']}\n"

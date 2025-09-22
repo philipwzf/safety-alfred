@@ -64,6 +64,7 @@ You are generating subgoals for household tasks. Given a task description and re
 - isCool(ObjectId) - object is cooled
 - isToggled(ObjectId) - object is on/toggled
 - isSliced(ObjectId) - object is sliced
+- isOpen(ObjectId) - receptacle is open
 
 ## Rules:
 1. Object and receptacle references must use grounded object IDs like `"Tomato|+1.00|+0.88|−1.11"` or `"Bowl|+2.10|+0.88|−2.00"`.
@@ -83,7 +84,6 @@ Task: "Slice the apple"
     "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)"
   ]
 }
-
 
 6. After slicing, if the task requires placing the sliced object somewhere, add an additional subgoal to put the sliced object in the appropriate receptacle. The sliced object will take on the same location as the original object but with "Sliced" appended to its name (e.g., "Apple|+01.00|+00.88|-01.11|AppleSliced_1" or "Apple|+01.00|+00.88|-01.11|AppleSliced_2").
 ### Example with placing sliced object:
@@ -107,16 +107,28 @@ Task: "Heat the apple in the microwave"
         "atLocation(Agent, Apple|+02.10|+00.88|-02.00)",
         "holds(Agent, Apple|+02.10|+00.88|-02.00)",
         "atLocation(Agent, Microwave|+01.20|+00.88|-01.50)",
-        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
         "inReceptacle(Apple|+02.10|+00.88|-02.00, Microwave|+01.20|+00.88|-01.50)",
         "NOT holds(Agent, Apple|+02.10|+00.88|-02.00)",
-        "closed(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
         "isToggled(Microwave|+01.20|+00.88|-01.50)",
         "NOT isToggled(Microwave|+01.20|+00.88|-01.50)",
-        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
         "holds(Agent, Apple|+02.10|+00.88|-02.00)",
-        "NOT opened(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
     ]
+}
+8. To pickup an object that is inside a closed receptacle, the agent must first navigate to the receptacle, open the receptacle, pickup the object, and then close the receptacle.
+### Example with picking up from closed receptacle:
+Task: "Pick up the apple from the fridge"
+{
+  "subgoals": [
+    "atLocation(Agent, Fridge|+01.20|+00.88|-01.50)",
+    "isOpen(Fridge|+01.20|+00.88|-01.50)",
+    "atLocation(Agent, Apple|+02.10|+00.88|-02.00)",
+    "holds(Agent, Apple|+02.10|+00.88|-02.00)",
+    "NOT isOpen(Fridge|+01.20|+00.88|-01.50)",
+  ]
 }
 
 ## Output Format:
@@ -140,15 +152,15 @@ Task: "Heat a slice of apple and put it on the table"
         "NOT holds(Agent, Knife|+00.50|+00.88|-01.50)",
         "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
         "atLocation(Agent, Microwave|+01.20|+00.88|-01.50)",
-        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
         "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Microwave|+01.20|+00.88|-01.50)",
         "NOT holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
-        "closed(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
         "isToggled(Microwave|+01.20|+00.88|-01.50)",
         "NOT isToggled(Microwave|+01.20|+00.88|-01.50)",
-        "opened(Microwave|+01.20|+00.88|-01.50)",
+        "isOpen(Microwave|+01.20|+00.88|-01.50)",
         "holds(Agent, Apple|+01.00|+00.88|-01.11|AppleSliced_1)",
-        "NOT opened(Microwave|+01.20|+00.88|-01.50)",
+        "NOT isOpen(Microwave|+01.20|+00.88|-01.50)",
         "atLocation(Agent, Table|+00.00|+00.88|-01.50)",
         "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Table|+00.00|+00.88|-01.50)"
     ]
