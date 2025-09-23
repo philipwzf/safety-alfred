@@ -4952,6 +4952,7 @@
     },
     "task_id": "trial_T20190909_000659_242354",
     "task_type": "pick_and_place_with_movable_recep",
+    "task_desc": "Put the butterknife (not knife) in a white cup, then place the cup with the butterknife on the counter.",
     "turk_annotations": {
         "anns": [
             {

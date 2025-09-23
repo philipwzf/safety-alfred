@@ -286,8 +286,20 @@ Task: "Heat a slice of apple and put it on the table"
         "inReceptacle(Apple|+01.00|+00.88|-01.11|AppleSliced_1, Table|+00.00|+00.88|-01.50)"
     ]
 }
-10. The sequence of actions and intermediate states in the output should be in the order of their execution and comply with the safety constraints.
-11. The safety constraints can contain the following four temporal operators: "G", "F", "X", "U". The meaning of these operators is as follows: Globally (Always) p: G(p). G(p) is true for a computation path if p holds at all states (points of time) along the path; Eventually p: F(p). F(p) is true for a path if p holds at some state along that path; Next p: X(p). X(p) is true along a path starting in state si (suffix of the main path) if p holds in the next state si+1; p Until q: (p)U(q). (p)U(q) is true along a path starting at s if q is true in some state reachable from s and p is true in all states from s until q holds. "p -> q": if p is true, then q.
+10. If the task requires putting an object into a sink or the sinkbasin, the agent must put into the sinkbasin instead of the sink. The sink cannot contain any object. A sinkbasin can be referred to by Sink|1.00|0.88|-1.50|SinkBasin
+### Examples:
+Task: "Put the apple into the sink"
+{
+    "subgoals": [
+        "atLocation(Agent, Apple|+01.00|+00.88|-01.11)",
+        "holds(Agent, Apple|+01.00|+00.88|-01.11)",
+        "atLocation(Agent, Sink|+01.20|+00.88|-01.50)",
+        "inReceptacle(Apple|+01.00|+00.88|-01.11, Sink|+01.20|+00.88|-01.50|SinkBasin)",
+    ]
+}
+
+11. The sequence of actions and intermediate states in the output should be in the order of their execution and comply with the safety constraints.
+12. The safety constraints can contain the following four temporal operators: "G", "F", "X", "U". The meaning of these operators is as follows: Globally (Always) p: G(p). G(p) is true for a computation path if p holds at all states (points of time) along the path; Eventually p: F(p). F(p) is true for a path if p holds at some state along that path; Next p: X(p). X(p) is true along a path starting in state si (suffix of the main path) if p holds in the next state si+1; p Until q: (p)U(q). (p)U(q) is true along a path starting at s if q is true in some state reachable from s and p is true in all states from s until q holds. "p -> q": if p is true, then q.
 
 Generate subgoals for the given task using only the provided objects. Your entire response must be a single JSON object. Do NOT wrap the JSON in Markdown code blocks or any other formatting."
 
