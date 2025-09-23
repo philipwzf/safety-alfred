@@ -4278,10 +4278,10 @@
             {
                 "objectName": "CellPhone_e3d6b27e",
                 "position": {
-                    "x": -1.10519874,
-                    "y": 0.746611655,
-                    "z": 2.64457226
-                },
+              "x": -0.790051937,
+              "y": 1.05862951,
+              "z": -0.4147059
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -4945,6 +4945,7 @@
     },
     "task_id": "trial_T20190909_000542_604565",
     "task_type": "pick_and_place_with_movable_recep",
+    "task_desc": "Put the butterknife (not knife) in a white cup, then place the cup with the butterknife on the counter.",
     "turk_annotations": {
         "anns": [
             {
