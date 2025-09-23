@@ -156,7 +156,7 @@ def gather_trace_files(base_dir: Path) -> List[Path]:
     return trace_files
 
 
-def load_constraints_from_json(path: Path, keys: Sequence[str] | None = None) -> List[SafetyConstraint]:
+def load_constraints_from_json(path: Path) -> List[SafetyConstraint]:
     with path.open("r", encoding="utf-8") as handle:
         payload = json.load(handle)
 
@@ -173,12 +173,7 @@ def load_constraints_from_json(path: Path, keys: Sequence[str] | None = None) ->
     if isinstance(payload, list):
         constraint_strings.extend(str(item) for item in payload)
     elif isinstance(payload, dict):
-        if keys:
-            for key in keys:
-                if key in payload:
-                    _extend_from_value(payload[key])
-        else:
-            _extend_from_value(payload)
+        _extend_from_value(payload)
     else:
         raise ValueError(f"Unsupported constraints JSON format in {path}")
 
@@ -211,7 +206,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--constraints-json",
-        required=True,
+        default="safety_rules_object.json",
         help="Path to JSON file containing safety constraints",
     )
     parser.add_argument(
@@ -228,7 +223,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> bool:
+def main(argv: Optional[Sequence[str]] = None) -> bool:
     args = build_arg_parser().parse_args(argv)
 
     repo_root = Path(__file__).resolve().parents[1]
@@ -254,7 +249,7 @@ def main(argv: Sequence[str] | None = None) -> bool:
         print(f"✗ Constraints JSON not found: {constraints_path}")
         return False
 
-    constraints = load_constraints_from_json(constraints_path, args.constraint_key)
+    constraints = load_constraints_from_json(constraints_path)
     if not constraints:
         print(f"✗ No constraints extracted from {constraints_path}")
         return False
