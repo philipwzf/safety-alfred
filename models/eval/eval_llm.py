@@ -67,7 +67,7 @@ class EvalLLM:
         # Setup simple logging
         os.makedirs('logs', exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        traj_path = args.traj_file.replace("data/json_2.1.0/", "").replace("/traj_data.json", "")
+        traj_path = args.traj_file.replace("data/json_2.1.0/", f"{args.llm_model}").replace("/traj_data.json", "")
         traj_log_file = os.path.join("logs", "trajectories", traj_path,f"r{args.ridx}_{timestamp}.json")
         os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
         log_file = traj_log_file.replace(".json", ".txt")
@@ -111,7 +111,6 @@ class EvalLLM:
         lock = SimpleLock()  
         try:
             print(f"Testing single trajectory: {traj_file_path}")
-            print(f"Task description: {traj_data['turk_annotations']['anns'][0]['task_desc']}")
             
             # Run evaluation on single trajectory
             self.evaluate(env, r_idx, traj_data, self.args, lock, successes, failures, results, goto=goto, inject_danger=inject_danger)
@@ -270,6 +269,8 @@ class EvalLLM:
             goal_instr = traj_data['turk_annotations']['anns'][r_idx]['task_desc']
             if traj_data.get('task_desc', None):
                 goal_instr = traj_data['task_desc']  # use more detailed task_desc if available
+
+            print(f"Task description: {goal_instr}")
 
             # Log task info
             self.log(f"Task: {goal_instr}")

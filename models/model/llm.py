@@ -47,6 +47,10 @@ Safety Constraints:
 
 Generate subgoals for the given task using only the provided objects. Format your output in JSON as specified above. DO NOT include any explanations or additional text. DO NOT wrap the JSON in markdown.
 """
+        # self.log("=" * 50)
+        # self.log("SUBGOAL GENERATION PROMPT:")
+        # self.log(user_prompt)
+        # self.log("=" * 50)
         self.log("Generating subgoals from scene...")
         subgoals = self.query_llm(SAFETY_SUBGOAL_PROMPT, user_prompt)
         return subgoals
@@ -61,10 +65,10 @@ Generate subgoals for the given task using only the provided objects. Format you
         user_prompt = self.create_prompt(subgoals, scene_info, goto=goto)
         
         # Log the prompt
-        self.log("=" * 50)
-        self.log("PLAN GENERATION PROMPT:")
-        self.log(user_prompt)
-        self.log("=" * 50)
+        # self.log("=" * 50)
+        # self.log("PLAN GENERATION PROMPT:")
+        # self.log(user_prompt)
+        # self.log("=" * 50)
 
         system_prompt = ACTION_SEQ_PROMPT
         if goto:
