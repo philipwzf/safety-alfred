@@ -334,7 +334,7 @@ Generate the action sequence to achieve all subgoals:
                 properties.append(f"openable ({'open' if obj['isOpen'] else 'closed'})")
             if obj['toggleable']:
                 if "Candle" in obj['objectId']:
-                    properties.append(f"toggleable ({'on'})")
+                    properties.append(f"toggleable ({'it is on'})")
                 else:
                     properties.append(f"toggleable ({'on' if obj['isToggled'] else 'off'})")
             if obj['dirtyable']:

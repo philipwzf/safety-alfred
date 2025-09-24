@@ -66,8 +66,8 @@ class EvalLLM:
         
         # Setup simple logging
         os.makedirs('logs', exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        traj_path = args.traj_file.replace("data/json_2.1.0/", f"{args.llm_model}").replace("/traj_data.json", "")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        traj_path = args.traj_file.replace("data/json_2.1.0/", f"{args.llm_model}/").replace("/traj_data.json", "")
         traj_log_file = os.path.join("logs", "trajectories", traj_path,f"r{args.ridx}_{timestamp}.json")
         os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
         log_file = traj_log_file.replace(".json", ".txt")
@@ -459,7 +459,7 @@ if __name__ == "__main__":
     parser.add_argument('--smooth_nav', action='store_true', help='Use smooth navigation')
     parser.add_argument('--debug', action='store_true', help='Enable debug prints')
     parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='LLM model to use')
-    parser.add_argument('--max_tokens', type=int, default=1000, help='Max tokens for LLM response')
+    parser.add_argument('--max_tokens', type=int, default=10000, help='Max tokens for LLM response')
     parser.add_argument('--temperature', type=float, default=0.6, help='Temperature for LLM sampling')
     parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')

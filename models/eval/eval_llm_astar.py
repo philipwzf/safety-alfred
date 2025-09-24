@@ -225,7 +225,7 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--reward_config', default='models/config/rewards.json')
     parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='LLM model to use')
-    parser.add_argument('--max_tokens', type=int, default=1000, help='Max tokens for LLM response')
+    parser.add_argument('--max_tokens', type=int, default=10000, help='Max tokens for LLM response')
     parser.add_argument('--temperature', type=float, default=0.6, help='Temperature for LLM sampling')
     parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
