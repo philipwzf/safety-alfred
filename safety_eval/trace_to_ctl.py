@@ -15,6 +15,36 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 import json
 
 
+_COLLISION_PATTERNS = {
+    "NAVIGATION": (
+        "is blocking agent",
+        "hand object collision",
+    ),
+    "OPEN": (
+        "failed to open/close",
+        "object failed to open",
+        "object failed to close",
+    ),
+    "PICKUP": (
+        "would cause it to collide",
+    ),
+}
+
+
+def _collision_from_error(message: Optional[str]) -> Optional[str]:
+    """Return a collision type label if the error message matches known patterns."""
+
+    text = message.strip().lower()
+    if not text:
+        return None
+
+    for collision_type, patterns in _COLLISION_PATTERNS.items():
+        for pattern in patterns:
+            if pattern in text:
+                return collision_type
+    return None
+
+
 def trace_to_ctl_sequence(trace_steps: Sequence[Dict[str, Any]]) -> List[Union[Dict[str, List[str]], str]]:
     """Convert a list of trace steps into the node/edge format expected by ``CTLParser``.
 
@@ -78,7 +108,9 @@ def _state_from_metadata(metadata: Dict[str, Any]) -> Dict[str, List[str]]:
     relation_set: set[str] = set()
     type_to_states: Dict[str, set[str]] = {}
     id_to_type: Dict[str, str] = {}
-
+    collision = _collision_from_error(metadata.get("errorMessage"))
+    if collision:
+        relation_set.add(f"COLLISION({collision})")
     # Build object-centric state strings using object types.
     for obj in metadata.get("objects", []) or []:
         object_id = _normalise_object_id(obj.get("objectId") or obj.get("name"))
