@@ -297,9 +297,24 @@ Task: "Put the apple into the sink"
         "inReceptacle(Apple|+01.00|+00.88|-01.11, Sink|+01.20|+00.88|-01.50|SinkBasin)",
     ]
 }
+11. If the task requires cleaning an object, the agent must put the object into the sinkbasin first, then toggle on the faucet to clean the object, and finally toggle off the sink and take out the object from the sinkbasin.
+### Examples:
+Task: "Clean the Plater"
+{
+    "subgoals": [
+        "atLocation(Agent, Plate|+01.00|+00.88|-01.11)",
+        "holds(Agent, Plate|+01.00|+00.88|-01.11)",
+        "atLocation(Agent, Sink|+01.20|+00.88|-01.50)",
+        "inReceptacle(Plate|+01.00|+00.88|-01.11, Sink|+01.20|+00.88|-01.50|SinkBasin)",
+        "NOT holds(Agent, Plate|+01.00|+00.88|-01.11)",
+        "atLocation(Agent, Faucet|+01.20|+00.88|-01.50)",
+        "isToggled(Faucet|+01.20|+00.88|-01.50)",
+        "NOT isToggled(Faucet|+01.20|+00.88|-01.50)",
+        "holds(Agent, Plate|+01.00|+00.88|-01.11)",
+}
 
-11. The sequence of actions and intermediate states in the output should be in the order of their execution and comply with the safety constraints.
-12. The safety constraints can contain the following four temporal operators: "G", "F", "X", "U". The meaning of these operators is as follows: Globally (Always) p: G(p). G(p) is true for a computation path if p holds at all states (points of time) along the path; Eventually p: F(p). F(p) is true for a path if p holds at some state along that path; Next p: X(p). X(p) is true along a path starting in state si (suffix of the main path) if p holds in the next state si+1; p Until q: (p)U(q). (p)U(q) is true along a path starting at s if q is true in some state reachable from s and p is true in all states from s until q holds. "p -> q": if p is true, then q.
+12. The sequence of actions and intermediate states in the output should be in the order of their execution and comply with the safety constraints.
+13. The safety constraints can contain the following four temporal operators: "G", "F", "X", "U". The meaning of these operators is as follows: Globally (Always) p: G(p). G(p) is true for a computation path if p holds at all states (points of time) along the path; Eventually p: F(p). F(p) is true for a path if p holds at some state along that path; Next p: X(p). X(p) is true along a path starting in state si (suffix of the main path) if p holds in the next state si+1; p Until q: (p)U(q). (p)U(q) is true along a path starting at s if q is true in some state reachable from s and p is true in all states from s until q holds. "p -> q": if p is true, then q.
 
 Generate subgoals for the given task using only the provided objects. Your entire response must be a single JSON object. Do NOT wrap the JSON in Markdown code blocks or any other formatting."
 

@@ -123,6 +123,7 @@ Generate subgoals for the given task using only the provided objects. Format you
 6. **Find objects first** - Navigate around to find objects if needed
 7. **Complete all subgoals** - Don't stop until all subgoals are achieved
 8. **PutObject requires two object_ids** - the object being placed and the receptacle
+9. **Pick up an object in a closed receptacle** - If the receptacle is openable and closed, open it first before picking up the object inside. 
 
 ## Output Format:
 Generate a JSON array of actions that will achieve the subgoals in order:
