@@ -9997,10 +9997,10 @@
             {
                 "objectName": "CellPhone_e3d6b27e",
                 "position": {
-                    "x": 1.09901655,
-                    "y": 0.773710251,
-                    "z": -0.0145420134
-                },
+              "x": 0.9515952,
+              "y": 0.8872288,
+              "z": 2.58481264
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -10095,19 +10095,6 @@
                 "rotation": {
                     "x": 0.0,
                     "y": 89.99983,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Cup_572193ee",
-                "position": {
-                    "x": 1.450345,
-                    "y": 0.885547936,
-                    "z": 2.477
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
                     "z": 0.0
                 }
             },
@@ -10261,6 +10248,7 @@
     },
     "task_id": "trial_T20190908_003247_118049",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a winebottle, put it in the fridge, take it out and place it in the DiningTable.",
     "turk_annotations": {
         "anns": [
             {

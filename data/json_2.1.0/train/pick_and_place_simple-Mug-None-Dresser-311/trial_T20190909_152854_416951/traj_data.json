@@ -3098,19 +3098,6 @@
                 }
             },
             {
-                "objectName": "CellPhone_73ef3690",
-                "position": {
-                    "x": 2.68043351,
-                    "y": 0.8073,
-                    "z": 3.71508837
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "Pen_2d1adb92",
                 "position": {
                     "x": 2.44725227,
@@ -3250,19 +3237,6 @@
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "CellPhone_73ef3690",
-                "position": {
-                    "x": 2.3991785,
-                    "y": 0.7457815,
-                    "z": -1.66925287
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 90.0,
                     "z": 0.0
                 }
             },
@@ -3416,6 +3390,7 @@
     },
     "task_id": "trial_T20190909_152854_416951",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Move mug to the dresser.",
     "turk_annotations": {
         "anns": [
             {

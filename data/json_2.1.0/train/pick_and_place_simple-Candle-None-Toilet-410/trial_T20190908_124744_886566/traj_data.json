@@ -1984,19 +1984,6 @@
             {
                 "objectName": "Cloth_b248458c",
                 "position": {
-                    "x": -2.372182,
-                    "y": 0.831212,
-                    "z": 1.96891129
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Cloth_b248458c",
-                "position": {
                     "x": -1.27390885,
                     "y": 0.887613654,
                     "z": 1.78599989
@@ -2138,7 +2125,7 @@
                 }
             },
             {
-                "objectName": "SoapBar_20ca2d0e",
+                "objectName": "ToiletPaper_5eb36cc2",
                 "position": {
                     "x": -1.01800013,
                     "y": 1.04416239,

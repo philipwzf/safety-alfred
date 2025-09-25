@@ -9953,7 +9953,7 @@
                 }
             },
             {
-                "objectName": "Ladle_ec6bb035",
+                "objectName": "CellPhone_6cb12d41",
                 "position": {
                     "x": -0.193877369,
                     "y": 0.159214318,
@@ -10041,19 +10041,6 @@
                     "x": 0.0,
                     "y": 90.0,
                     "z": 1.40334191e-14
-                }
-            },
-            {
-                "objectName": "Pot_1bc23cfd",
-                "position": {
-                    "x": 1.19580007,
-                    "y": 0.11320281,
-                    "z": -1.47949946
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
                 }
             },
             {
@@ -10531,6 +10518,7 @@
     },
     "task_id": "trial_T20190907_021137_330453",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a bowl, put it in the fridge to cool, take the bowl out of the fridge, and place it in a cabinet.",
     "turk_annotations": {
         "anns": [
             {

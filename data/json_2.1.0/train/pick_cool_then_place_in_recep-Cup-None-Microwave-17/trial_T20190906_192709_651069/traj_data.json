@@ -12161,7 +12161,7 @@
                 }
             },
             {
-                "objectName": "Apple_7daf87a0",
+                "objectName": "CellPhone_e3d6b27e",
                 "position": {
                     "x": -1.42715693,
                     "y": 1.07565665,
@@ -12356,19 +12356,6 @@
                 }
             },
             {
-                "objectName": "Cup_572193ee",
-                "position": {
-                    "x": -1.296285,
-                    "y": 1.01470053,
-                    "z": -0.0576033629
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 89.99983,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "Knife_268c1c72",
                 "position": {
                     "x": 1.444309,
@@ -12518,6 +12505,7 @@
     },
     "task_id": "trial_T20190906_192709_651069",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a Cup, cool it in the fridge, and then place it in the microwave.",
     "turk_annotations": {
         "anns": [
             {

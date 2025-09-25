@@ -2022,10 +2022,10 @@
             {
                 "objectName": "ToiletPaper_cba7cd43",
                 "position": {
-                    "x": 0.6588001,
-                    "y": 0.738700032,
-                    "z": 2.64830852
-                },
+              "x": 0.508150339,
+              "y": 0.740455449,
+              "z": 2.32973957
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -2182,6 +2182,7 @@
     },
     "task_id": "trial_T20190906_200812_843662",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Put a candle on the Countertop",
     "turk_annotations": {
         "anns": [
             {

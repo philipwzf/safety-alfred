@@ -7734,10 +7734,10 @@
             {
                 "objectName": "CellPhone_6cb12d41",
                 "position": {
-                    "x": 2.03011179,
-                    "y": 0.909427,
-                    "z": -1.513
-                },
+              "x": 1.7,
+              "y": 0.95539993,
+              "z": -1.5
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -8187,19 +8187,6 @@
                 }
             },
             {
-                "objectName": "CellPhone_6cb12d41",
-                "position": {
-                    "x": -0.106612019,
-                    "y": 0.923526943,
-                    "z": 0.273899674
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "ButterKnife_4f8c70c0",
                 "position": {
                     "x": 1.71226215,
@@ -8310,6 +8297,7 @@
     },
     "task_id": "trial_T20190907_070755_073684",
     "task_type": "pick_heat_then_place_in_recep",
+    "task_desc": "Pick up the mug in the coffeemachine, place the mug in the microwave to heat, then place it back to the coffee machine",
     "turk_annotations": {
         "anns": [
             {

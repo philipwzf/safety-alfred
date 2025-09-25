@@ -3128,6 +3128,7 @@
     },
     "task_id": "trial_T20190909_015104_862652",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Move a watering can to a black dresser.",
     "turk_annotations": {
         "anns": [
             {

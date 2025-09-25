@@ -3016,10 +3016,10 @@
             {
                 "objectName": "CellPhone_73ef3690",
                 "position": {
-                    "x": -0.8811438,
-                    "y": 0.913408458,
-                    "z": 4.35
-                },
+              "x": 2.52934146,
+              "y": 0.84100014,
+              "z": 0.361719579
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -3183,19 +3183,6 @@
                 }
             },
             {
-                "objectName": "RemoteControl_787808a4",
-                "position": {
-                    "x": -1.01247966,
-                    "y": 0.9147331,
-                    "z": 4.71732759
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "Laptop_098867ef",
                 "position": {
                     "x": -1.07318592,
@@ -3293,6 +3280,7 @@
     },
     "task_id": "trial_T20190909_152910_413839",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Move a mug to the dresser.",
     "turk_annotations": {
         "anns": [
             {

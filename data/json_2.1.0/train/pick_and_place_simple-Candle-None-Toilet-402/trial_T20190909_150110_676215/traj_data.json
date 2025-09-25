@@ -2096,32 +2096,6 @@
                 }
             },
             {
-                "objectName": "Candle_5e410bff",
-                "position": {
-                    "x": -1.74623311,
-                    "y": 0.04680401,
-                    "z": 5.006726
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Candle_5e410bff",
-                "position": {
-                    "x": -1.86440015,
-                    "y": 0.9727007,
-                    "z": 4.87779236
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "SprayBottle_5e1f325d",
                 "position": {
                     "x": -1.095081,
@@ -2226,7 +2200,7 @@
                 }
             },
             {
-                "objectName": "TissueBox_a8e7eab7",
+                "objectName": "ToiletPaper_1e7dc481",
                 "position": {
                     "x": -0.194000363,
                     "y": 1.04506838,

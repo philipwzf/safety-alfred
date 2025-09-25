@@ -6261,6 +6261,7 @@
     },
     "task_id": "trial_T20190909_055319_119903",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Move a candle to the Cart",
     "turk_annotations": {
         "anns": [
             {

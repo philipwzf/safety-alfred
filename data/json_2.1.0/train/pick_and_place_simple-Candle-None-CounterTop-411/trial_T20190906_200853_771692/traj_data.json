@@ -1906,10 +1906,10 @@
             {
                 "objectName": "ToiletPaper_d83e8497",
                 "position": {
-                    "x": -2.60391474,
-                    "y": 1.03919446,
-                    "z": 1.51413262
-                },
+              "x": 0.508150339,
+              "y": 0.740455449,
+              "z": 2.32973957
+            },
                 "rotation": {
                     "x": 1.05103016,
                     "y": 359.9892,
@@ -1988,6 +1988,7 @@
     },
     "task_id": "trial_T20190906_200853_771692",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Put the candle down on the countertop",
     "turk_annotations": {
         "anns": [
             {

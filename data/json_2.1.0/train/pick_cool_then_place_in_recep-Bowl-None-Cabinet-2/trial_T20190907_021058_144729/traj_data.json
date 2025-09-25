@@ -11926,6 +11926,7 @@
     },
     "task_id": "trial_T20190907_021058_144729",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a bowl, put it in the fridge to cool, take the bowl out of the fridge, and place it in a cabinet.",
     "turk_annotations": {
         "anns": [
             {

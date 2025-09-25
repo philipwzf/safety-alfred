@@ -6386,6 +6386,7 @@
     },
     "task_id": "trial_T20190909_042935_977031",
     "task_type": "pick_clean_then_place_in_recep",
+    "task_desc": "Take a kettle, clean it in the sink, and place it inside the cabinet that is under the sink.",
     "turk_annotations": {
         "anns": [
             {

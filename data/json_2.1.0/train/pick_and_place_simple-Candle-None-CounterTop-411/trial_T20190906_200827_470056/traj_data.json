@@ -1948,10 +1948,10 @@
             {
                 "objectName": "ToiletPaper_cba7cd43",
                 "position": {
-                    "x": 0.6157963,
-                    "y": 0.5835365,
-                    "z": 0.133743465
-                },
+              "x": 0.508150339,
+              "y": 0.740455449,
+              "z": 2.32973957
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -2076,19 +2076,6 @@
                 }
             },
             {
-                "objectName": "Candle_5a59e3f6",
-                "position": {
-                    "x": 0.686956,
-                    "y": 0.252976954,
-                    "z": 2.42060566
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "SprayBottle_52e0ddc4",
                 "position": {
                     "x": -1.85965943,
@@ -2108,6 +2095,7 @@
     },
     "task_id": "trial_T20190906_200827_470056",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Put a candle on the countertop",
     "turk_annotations": {
         "anns": [
             {

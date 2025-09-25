@@ -11017,19 +11017,6 @@
                 }
             },
             {
-                "objectName": "Bread_48e00ad2",
-                "position": {
-                    "x": -1.80318069,
-                    "y": 1.54979384,
-                    "z": -0.175190732
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 90.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "Tomato_448791c6",
                 "position": {
                     "x": 0.321481615,
@@ -11114,6 +11101,7 @@
     },
     "task_id": "trial_T20190907_020952_924463",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a bowl, put it in the fridge to cool, take the bowl out of the fridge, and place it in a cabinet.",
     "turk_annotations": {
         "anns": [
             {

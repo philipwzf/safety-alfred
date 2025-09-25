@@ -12808,6 +12808,7 @@
     },
     "task_id": "trial_T20190908_175003_052826",
     "task_type": "pick_heat_then_place_in_recep",
+    "task_desc": "Pick up a mug, put it in the microwave to heat it, then put it on the coffee maker",
     "turk_annotations": {
         "anns": [
             {

@@ -6840,10 +6840,10 @@
             {
                 "objectName": "CellPhone_e3d6b27e",
                 "position": {
-                    "x": -1.29051554,
-                    "y": 0.747337937,
-                    "z": 2.83014464
-                },
+              "x": 1.444309,
+              "y": 0.90994066,
+              "z": 0.7067195
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -6903,19 +6903,6 @@
                 }
             },
             {
-                "objectName": "WineBottle_6b7178a8",
-                "position": {
-                    "x": 0.951595068,
-                    "y": 0.8872287,
-                    "z": 2.36918736
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "Kettle_c40d8d1f",
                 "position": {
                     "x": 0.5029,
@@ -6925,19 +6912,6 @@
                 "rotation": {
                     "x": 0.0,
                     "y": 89.99983,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Kettle_c40d8d1f",
-                "position": {
-                    "x": 1.128434,
-                    "y": 0.91254133,
-                    "z": 0.4229527
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
                     "z": 0.0
                 }
             },
@@ -7006,19 +6980,7 @@
                     "z": 0.0
                 }
             },
-            {
-                "objectName": "Cup_572193ee",
-                "position": {
-                    "x": 1.36534023,
-                    "y": 0.910747945,
-                    "z": -0.144580841
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
+
             {
                 "objectName": "Cup_572193ee",
                 "position": {
@@ -7188,32 +7150,7 @@
                     "z": 0.0
                 }
             },
-            {
-                "objectName": "Mug_c297f602",
-                "position": {
-                    "x": -1.29051554,
-                    "y": 0.7439,
-                    "z": 2.273428
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 90.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Mug_c297f602",
-                "position": {
-                    "x": -1.47583234,
-                    "y": 0.7446263,
-                    "z": 1.90228331
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
+            
             {
                 "objectName": "Apple_7daf87a0",
                 "position": {
@@ -7585,6 +7522,7 @@
     },
     "task_id": "trial_T20190909_042203_048291",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a bowl, put the bowl in the fridge to cool, take the bowl out of the fridge, and place it on a countertop.",
     "turk_annotations": {
         "anns": [
             {

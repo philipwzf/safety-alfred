@@ -7269,19 +7269,6 @@
             {
                 "objectName": "Plate_c933fa0b",
                 "position": {
-                    "x": 1.20740271,
-                    "y": 0.9123855,
-                    "z": 0.7067195
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Plate_c933fa0b",
-                "position": {
                     "x": -1.16246915,
                     "y": 0.342446268,
                     "z": 0.778625369
@@ -7423,11 +7410,11 @@
                 }
             },
             {
-                "objectName": "Bread_74101882",
+                "objectName": "CellPhone_e3d6b27e",
                 "position": {
-                    "x": 1.128434,
+                    "x": 0.9,
                     "y": 0.9749149,
-                    "z": 0.1391859
+                    "z": 0.3
                 },
                 "rotation": {
                     "x": 0.0,
@@ -7767,6 +7754,7 @@
     },
     "task_id": "trial_T20190909_080537_886002",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a bowl, put the bowl in the fridge to cool, take the bowl out of the fridge, and place it on a countertop.",
     "turk_annotations": {
         "anns": [
             {

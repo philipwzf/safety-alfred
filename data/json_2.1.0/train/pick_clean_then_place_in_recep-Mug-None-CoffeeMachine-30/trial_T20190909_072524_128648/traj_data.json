@@ -3975,10 +3975,10 @@
             {
                 "objectName": "CellPhone_bf099a5c",
                 "position": {
-                    "x": 3.27791429,
-                    "y": 0.8981973,
-                    "z": -0.6986661
-                },
+              "x": 3.04919958,
+              "y": 0.966699958,
+              "z": 0.391800451
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -4499,6 +4499,7 @@
     },
     "task_id": "trial_T20190909_072524_128648",
     "task_type": "pick_clean_then_place_in_recep",
+    "task_desc": "Pick up a mug , clean it in the sink , and place it in the coffee machine .",
     "turk_annotations": {
         "anns": [
             {

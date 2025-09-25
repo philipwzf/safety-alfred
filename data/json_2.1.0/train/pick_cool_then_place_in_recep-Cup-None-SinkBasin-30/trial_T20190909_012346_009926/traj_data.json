@@ -11477,6 +11477,7 @@
     },
     "task_id": "trial_T20190909_012346_009926",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a cup, cool it in the fridge, then place the cup in the sinkbasin.",
     "turk_annotations": {
         "anns": [
             {

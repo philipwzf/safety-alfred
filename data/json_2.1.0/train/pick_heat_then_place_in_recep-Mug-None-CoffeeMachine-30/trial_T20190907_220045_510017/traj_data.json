@@ -10891,6 +10891,7 @@
     },
     "task_id": "trial_T20190907_220045_510017",
     "task_type": "pick_heat_then_place_in_recep",
+    "task_desc": "Pick up the mug, put it in the microwave to heat it, then put it back on the coffee machine",
     "turk_annotations": {
         "anns": [
             {

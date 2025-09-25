@@ -9226,24 +9226,11 @@
                 }
             },
             {
-                "objectName": "WineBottle_6b7178a8",
+                "objectName": "CellPhone_e3d6b27e",
                 "position": {
                     "x": 0.951595068,
                     "y": 0.8872287,
                     "z": 2.477
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "WineBottle_6b7178a8",
-                "position": {
-                    "x": 1.41420341,
-                    "y": 0.08718041,
-                    "z": 1.47233081
                 },
                 "rotation": {
                     "x": 0.0,
@@ -9326,19 +9313,6 @@
                 "rotation": {
                     "x": 0.0,
                     "y": 89.99983,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Cup_572193ee",
-                "position": {
-                    "x": 0.951595068,
-                    "y": 0.885547936,
-                    "z": 2.261375
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
                     "z": 0.0
                 }
             },
@@ -9817,6 +9791,7 @@
     },
     "task_id": "trial_T20190908_003313_375871",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a winebottle, put it in the fridge, take it out and place it on the diningtable.",
     "turk_annotations": {
         "anns": [
             {

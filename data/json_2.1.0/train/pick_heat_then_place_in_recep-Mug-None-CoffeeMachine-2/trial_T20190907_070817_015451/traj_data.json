@@ -7886,10 +7886,10 @@
             {
                 "objectName": "CellPhone_6cb12d41",
                 "position": {
-                    "x": 1.815539,
-                    "y": 0.4573176,
-                    "z": 0.599400043
-                },
+              "x": 1.5,
+              "y": 0.95539993,
+              "z": -1.36239815
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -8618,6 +8618,7 @@
     },
     "task_id": "trial_T20190907_070817_015451",
     "task_type": "pick_heat_then_place_in_recep",
+    "task_desc": "Pick up a mug, place the mug in the microwave to heat, then place it back to the coffee machine",
     "turk_annotations": {
         "anns": [
             {

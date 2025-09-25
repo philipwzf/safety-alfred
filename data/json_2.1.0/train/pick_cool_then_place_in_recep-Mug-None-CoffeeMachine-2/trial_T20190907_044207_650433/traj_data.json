@@ -8866,10 +8866,10 @@
             {
                 "objectName": "CellPhone_6cb12d41",
                 "position": {
-                    "x": 1.65876138,
-                    "y": 0.7601382,
-                    "z": 1.14720273
-                },
+              "x": 1.09,
+              "y": 0.95539993,
+              "z": -1.36239815
+            },
                 "rotation": {
                     "x": -7.062251e-30,
                     "y": 270.0,
@@ -9410,19 +9410,6 @@
                 }
             },
             {
-                "objectName": "Mug_b045e42b",
-                "position": {
-                    "x": 2.03011179,
-                    "y": 0.906500041,
-                    "z": -1.61003125
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
                 "objectName": "Bowl_253fa632",
                 "position": {
                     "x": -0.249916419,
@@ -9442,6 +9429,7 @@
     },
     "task_id": "trial_T20190907_044207_650433",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up a mug, cool it in the fridge, and then place it on the coffee machine.",
     "turk_annotations": {
         "anns": [
             {

@@ -2696,6 +2696,7 @@
     },
     "task_id": "trial_T20190906_193301_828239",
     "task_type": "pick_and_place_simple",
+    "task_desc": "Place a watering can on a black desk.",
     "turk_annotations": {
         "anns": [
             {

@@ -8212,19 +8212,6 @@
             {
                 "objectName": "CellPhone_e3d6b27e",
                 "position": {
-                    "x": 1.0494653,
-                    "y": 0.9092117,
-                    "z": 0.7067195
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "CellPhone_e3d6b27e",
-                "position": {
                     "x": 1.12749839,
                     "y": 0.77432996,
                     "z": 0.332766771
@@ -8641,10 +8628,10 @@
             {
                 "objectName": "CellPhone_e3d6b27e",
                 "position": {
-                    "x": 1.15598023,
-                    "y": 0.77432996,
-                    "z": -0.0145420134
-                },
+              "x": 1.4,
+              "y": 0.900000036,
+              "z": 1.2
+            },
                 "rotation": {
                     "x": 0.0,
                     "y": 0.0,
@@ -8713,19 +8700,6 @@
                 "rotation": {
                     "x": 0.0,
                     "y": 90.0,
-                    "z": 0.0
-                }
-            },
-            {
-                "objectName": "Bowl_7e041f70",
-                "position": {
-                    "x": 1.36534023,
-                    "y": 0.90994066,
-                    "z": 0.7067195
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 0.0,
                     "z": 0.0
                 }
             },
@@ -8905,6 +8879,7 @@
     },
     "task_id": "trial_T20190907_144031_217697",
     "task_type": "pick_cool_then_place_in_recep",
+    "task_desc": "Pick up the winebottle, chill it in the fridge, then place it in the garbagecan.",
     "turk_annotations": {
         "anns": [
             {
