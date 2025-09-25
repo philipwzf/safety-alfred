@@ -1,12 +1,6 @@
 # Safety-ALFRED
 
 ## Quickstart
-
-Clone repo:
-```bash
-$ git clone git@github.com:philipwzf/safety-alfred.git
-```
-
 Install requirements(conda):
 ```bash
 $ conda create -n ai2thor python==3.10
