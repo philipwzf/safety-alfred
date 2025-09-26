@@ -13,7 +13,7 @@ import numpy as np
 import gen.constants as constants
 from env.thor_env import ThorEnv
 
-N_PROCS = 40
+N_PROCS = 1
 
 lock = threading.Lock()
 all_scene_numbers = sorted(constants.TRAIN_SCENE_NUMBERS + constants.TEST_SCENE_NUMBERS, reverse=True)
@@ -100,6 +100,9 @@ def get_obj(env, open_test_objs, reachable_points, agent_height, scene_name, goo
 
 # Derived from function of the same name in game_states/game_state_base.py
 def get_mask_of_obj(env, object_id):
+    if not env.last_event.instance_segmentation_frame:
+        breakpoint()
+        raise RuntimeError("Instance segmentation frame not found.")
     instance_detections2D = env.last_event.instance_detections2D
     instance_seg_frame = np.array(env.last_event.instance_segmentation_frame)
 

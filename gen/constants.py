@@ -13,6 +13,7 @@ DATA_SAVE_PATH = "dataset/new_trajectories"
 
 OPEN_LOOP = True
 FULL_OBSERVABLE_STATE = True
+HEADLESS = True  # whether to use the Unity headless mode (no rendering)
 
 ########################################################################################################################
 # Generation Ablations

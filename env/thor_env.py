@@ -24,7 +24,8 @@ class ThorEnv(Controller):
                  player_screen_height=constants.DETECTION_SCREEN_HEIGHT,
                  player_screen_width=constants.DETECTION_SCREEN_WIDTH,
                  quality='MediumCloseFitShadows',
-                 build_path=constants.BUILD_PATH):
+                 build_path=constants.BUILD_PATH,
+                 headless=constants.HEADLESS):
 
         # ai2thor 5.x calls into reset() during Controller.__init__, so make sure
         # our subclass state exists before the super constructor runs.
@@ -45,13 +46,20 @@ class ThorEnv(Controller):
         }
         if build_path is not None:
             controller_kwargs['local_executable_path'] = build_path
-
-        super().__init__(
-            width=player_screen_width,
-            height=player_screen_height,
-            x_display=x_display,
+        if headless:
+            super().__init__(
+            headless=headless,
+            platform='CloudRendering',
             **controller_kwargs
         )
+        else:
+            super().__init__(
+                width=player_screen_width,
+                height=player_screen_height,
+                x_display=x_display,
+                headless=headless,
+                **controller_kwargs
+            )
 
         print("ThorEnv started.")
 
@@ -84,6 +92,7 @@ class ThorEnv(Controller):
             renderObjectImage=render_object_image,
             visibilityDistance=visibility_distance,
             makeAgentsVisible=False,
+            renderInstanceSegmentation=True,
         ))
 
         # reset task if specified
@@ -117,6 +126,7 @@ class ThorEnv(Controller):
             renderObjectImage=constants.RENDER_OBJECT_IMAGE,
             visibilityDistance=constants.VISIBILITY_DISTANCE,
             makeAgentsVisible=False,
+            renderInstanceSegmentation=True,
         ))
         if len(object_toggles) > 0:
             super().step((dict(action='SetObjectToggles', objectToggles=object_toggles)))
@@ -362,8 +372,11 @@ class ThorEnv(Controller):
             'renderClassImage',
             'renderObjectImage',
             'renderNormalsImage',
-            'renderSemanticSegmentation'
         }
+        if action.get('action') == 'PutObject':
+            receptacle_object_id = action.pop('receptacleObjectId', None)
+            if receptacle_object_id is not None:
+                action['objectId'] = receptacle_object_id
         if action.get('action') == 'TeleportFull':
             for key in unsupported_keys | deprecated_render_keys:
                 action.pop(key, None)
