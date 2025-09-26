@@ -411,6 +411,11 @@ class ThorEnv(Controller):
     def _sanitize_action(self, action):
         action = copy.deepcopy(action)
         unsupported_keys = {'rotateOnTeleport'}
+        if action.get('action') == 'PutObject':
+            # AI2-THOR 5.x expects the receptacle id as the objectId parameter.
+            receptacle_object_id = action.pop('receptacleObjectId', None)
+            if receptacle_object_id is not None:
+                action['objectId'] = receptacle_object_id
         if action.get('action') == 'TeleportFull':
             for key in unsupported_keys:
                 action.pop(key, None)
