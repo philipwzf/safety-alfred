@@ -45,7 +45,13 @@ class EvalLLMAstar(EvalLLM):
             return False, env.last_event, 'Navigation graph unavailable'
 
         self._graph.update_map(env)
-        reachable = env.last_event.metadata.get('reachablePositions', []) if env.last_event else []
+        if env.last_event:
+            metadata = env.last_event.metadata or {}
+            reachable = metadata.get('reachablePositions')
+            if reachable is None:
+                reachable = metadata.get('actionReturn', [])
+        else:
+            reachable = []
         nav_point = self._select_navigable_point(reachable, target_position)
         if nav_point is None:
             return False, env.last_event, 'No reachable navigation target'
@@ -105,7 +111,10 @@ class EvalLLMAstar(EvalLLM):
         event = env.last_event
         if not event:
             return
-        scene_name = event.metadata.get('sceneName') if event.metadata else None
+        metadata = event.metadata or {}
+        scene_name = metadata.get('sceneName')
+        if not scene_name:
+            scene_name = getattr(env, 'scene', None)
         if not scene_name:
             return
         try:

@@ -306,7 +306,10 @@ class Graph(object):
 
     def update_map(self, env):
         event = env.step({'action': 'GetReachablePositions'})
-        new_reachable_positions = event.metadata['reachablePositions']
+        metadata = event.metadata or {}
+        new_reachable_positions = metadata.get('reachablePositions')
+        if new_reachable_positions is None:
+            new_reachable_positions = metadata.get('actionReturn', [])
         new_memory = np.full_like(self.memory[:, :], MAX_WEIGHT_IN_GRAPH)
         if self.construct_graph:
             for point in new_reachable_positions:

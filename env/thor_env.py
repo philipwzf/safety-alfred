@@ -273,32 +273,13 @@ class ThorEnv(Controller):
 
         events = []
         for xx in np.arange(.1, 1.0001, .1):
-            if xx < 1:
-                teleport_action = {
-                    'action': 'TeleportFull',
-                    'rotation': np.round(start_rotation * (1 - xx) + end_rotation * xx, 3),
-                    'x': position['x'],
-                    'z': position['z'],
-                    'y': position['y'],
-                    'horizon': horizon,
-                    'tempRenderChange': True,
-                    'renderNormalsImage': False,
-                    'renderImage': render_settings['renderImage'],
-                    'renderClassImage': render_settings['renderClassImage'],
-                    'renderObjectImage': render_settings['renderObjectImage'],
-                    'renderDepthImage': render_settings['renderDepthImage'],
-                }
-                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
-            else:
-                teleport_action = {
-                    'action': 'TeleportFull',
-                    'rotation': np.round(start_rotation * (1 - xx) + end_rotation * xx, 3),
-                    'x': position['x'],
-                    'z': position['z'],
-                    'y': position['y'],
-                    'horizon': horizon,
-                }
-                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
+            rotation_step = np.round(start_rotation * (1 - xx) + end_rotation * xx, 3)
+            teleport_action = self._build_teleport_action(
+                position,
+                rotation_step,
+                horizon,
+            )
+            event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
 
             if event.metadata['lastActionSuccess']:
                 events.append(event)
@@ -318,32 +299,13 @@ class ThorEnv(Controller):
 
         events = []
         for xx in np.arange(.1, 1.0001, .1):
-            if xx < 1:
-                teleport_action = {
-                    'action': 'TeleportFull',
-                    'rotation': rotation,
-                    'x': position['x'],
-                    'z': position['z'],
-                    'y': position['y'],
-                    'horizon': np.round(start_horizon * (1 - xx) + end_horizon * xx, 3),
-                    'tempRenderChange': True,
-                    'renderNormalsImage': False,
-                    'renderImage': render_settings['renderImage'],
-                    'renderClassImage': render_settings['renderClassImage'],
-                    'renderObjectImage': render_settings['renderObjectImage'],
-                    'renderDepthImage': render_settings['renderDepthImage'],
-                }
-                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
-            else:
-                teleport_action = {
-                    'action': 'TeleportFull',
-                    'rotation': rotation,
-                    'x': position['x'],
-                    'z': position['z'],
-                    'y': position['y'],
-                    'horizon': np.round(start_horizon * (1 - xx) + end_horizon * xx, 3),
-                }
-                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
+            horizon_step = np.round(start_horizon * (1 - xx) + end_horizon * xx, 3)
+            teleport_action = self._build_teleport_action(
+                position,
+                rotation,
+                horizon_step,
+            )
+            event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
 
             if event.metadata['lastActionSuccess']:
                 events.append(event)
@@ -361,20 +323,11 @@ class ThorEnv(Controller):
         end_horizon = start_horizon + angle
         position = event.metadata['agent']['position']
 
-        teleport_action = {
-            'action': 'TeleportFull',
-            'rotation': rotation,
-            'x': position['x'],
-            'z': position['z'],
-            'y': position['y'],
-            'horizon': np.round(end_horizon, 3),
-            'tempRenderChange': True,
-            'renderNormalsImage': False,
-            'renderImage': render_settings['renderImage'],
-            'renderClassImage': render_settings['renderClassImage'],
-            'renderObjectImage': render_settings['renderObjectImage'],
-            'renderDepthImage': render_settings['renderDepthImage'],
-        }
+        teleport_action = self._build_teleport_action(
+            position,
+            rotation,
+            np.round(end_horizon, 3),
+        )
         event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
         return event
 
@@ -391,28 +344,28 @@ class ThorEnv(Controller):
         start_rotation = rotation['y']
         end_rotation = start_rotation + angle
 
-        teleport_action = {
-            'action': 'TeleportFull',
-            'rotation': np.round(end_rotation, 3),
-            'x': position['x'],
-            'z': position['z'],
-            'y': position['y'],
-            'horizon': horizon,
-            'tempRenderChange': True,
-            'renderNormalsImage': False,
-            'renderImage': render_settings['renderImage'],
-            'renderClassImage': render_settings['renderClassImage'],
-            'renderObjectImage': render_settings['renderObjectImage'],
-            'renderDepthImage': render_settings['renderDepthImage'],
-        }
-        event = super().step(teleport_action, **step_kwargs)
+        teleport_action = self._build_teleport_action(
+            position,
+            np.round(end_rotation, 3),
+            horizon,
+        )
+        event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
         return event
 
     def _sanitize_action(self, action):
         action = copy.deepcopy(action)
         unsupported_keys = {'rotateOnTeleport'}
+        deprecated_render_keys = {
+            'tempRenderChange',
+            'renderImage',
+            'renderDepthImage',
+            'renderClassImage',
+            'renderObjectImage',
+            'renderNormalsImage',
+            'renderSemanticSegmentation'
+        }
         if action.get('action') == 'TeleportFull':
-            for key in unsupported_keys:
+            for key in unsupported_keys | deprecated_render_keys:
                 action.pop(key, None)
             rotation = action.get('rotation')
             if isinstance(rotation, (int, float)):
@@ -425,6 +378,17 @@ class ThorEnv(Controller):
                     standing = agent_meta.get('isStanding', standing)
                 action['standing'] = standing
         return action
+
+    def _build_teleport_action(self, position, rotation, horizon):
+        """Construct a TeleportFull action that is compatible with AI2-THOR 5.x."""
+        return {
+            'action': 'TeleportFull',
+            'x': position['x'],
+            'y': position['y'],
+            'z': position['z'],
+            'rotation': rotation,
+            'horizon': horizon,
+        }
 
     def to_thor_api_exec(self, action, object_id="", smooth_nav=False):
         # TODO: parametrized navigation commands
@@ -464,10 +428,8 @@ class ThorEnv(Controller):
                           objectId=object_id)
             event = self.step(action)
         elif "PutObject" in action:
-            inventory_object_id = self.last_event.metadata['inventoryObjects'][0]['objectId']
             action = dict(action="PutObject",
-                          objectId=inventory_object_id,
-                          receptacleObjectId=object_id,
+                          objectId=object_id,
                           forceAction=True,
                           placeStationary=True)
             event = self.step(action)

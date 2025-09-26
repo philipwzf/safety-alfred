@@ -190,7 +190,7 @@ class EvalLLM:
             # Inject some danger by filling all fillable objects with coffee
             metadata = event.metadata
             for obj in metadata['objects']:
-                if obj["canFillWithLiquid"]:
+                if obj["canFillWithLiquid"] and not obj["isFilledWithLiquid"]:
                     fill_action = {
                         "action": "FillObjectWithLiquid",
                         "objectId": obj["objectId"],
@@ -311,7 +311,7 @@ class EvalLLM:
                 if action.lower() in ['stop', 'end', 'finish', 'done']:
                     print("\tLLM predicted STOP")
                     # Get final position of all the objects
-                    self.execute_action(env, {'action': 'LookUp'}, smooth_nav=args.smooth_nav)
+                    self.execute_action(env, {'action': 'Done'}, smooth_nav=args.smooth_nav)
                     break
 
                 if args.debug:
