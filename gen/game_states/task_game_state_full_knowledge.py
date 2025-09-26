@@ -271,13 +271,20 @@ class TaskGameStateFullKnowledge(TaskGameState):
                 point_z = self.gt_graph.points[dist_min][1]
                 should_fail = True
 
+            agent_horizon = self.env.last_event.metadata['agent'].get('cameraHorizon', 0)
+            rotation = action['rotation']
+            if isinstance(rotation, dict):
+                rotation_dict = rotation
+            else:
+                rotation_dict = {'x': 0, 'y': rotation, 'z': 0}
             action = {
-                'action': 'Teleport',
+                'action': 'TeleportFull',
                 'x': point_x * constants.AGENT_STEP_SIZE,
                 'y': self.agent_height,
                 'z': point_z * constants.AGENT_STEP_SIZE,
-                'rotateOnTeleport': True,
-                'rotation': action['rotation'],
+                'rotation': rotation_dict,
+                'horizon': agent_horizon,
+                'standing': True,
             }
 
         elif ((action['action'] == 'OpenObject' or action['action'] == 'CloseObject') and

@@ -7,11 +7,17 @@ import gen.goal_library as glib
 
 
 def get_pose(event):
-    pose = event.pose
-    return (int(np.round(pose[0] / (1000 * constants.AGENT_STEP_SIZE))),
-            int(np.round(pose[1] / (1000 * constants.AGENT_STEP_SIZE))),
-            int(np.round(pose[2] / (1000 * 90))),
-            int(np.round(pose[3] / (1000))))
+    agent = event.metadata.get('agent', {})
+    position = agent.get('position', {})
+    rotation = agent.get('rotation', {})
+    horizon = agent.get('cameraHorizon', 0)
+    orientation = int(np.round(rotation.get('y', 0.0) / 90.0)) % 4
+    return (
+        int(np.round(position.get('x', 0.0) / constants.AGENT_STEP_SIZE)),
+        int(np.round(position.get('z', 0.0) / constants.AGENT_STEP_SIZE)),
+        orientation,
+        int(np.round(horizon)),
+    )
 
 
 def get_object_data(metadata):
@@ -236,16 +242,17 @@ def get_action_str(action):
         if 'z' in action:
             action_str += ' z: %.03f' % action['z']
             del action['z']
-        if 'rotation' in action and action.get('rotateOnTeleport', False):
-            if type(action['rotation']) == dict:
-                action_str += ' r: %d' % int(action['rotation']['y'])
+        if 'rotation' in action:
+            if isinstance(action['rotation'], dict):
+                action_str += ' r: %d' % int(action['rotation'].get('y', 0))
             else:
                 action_str += ' r: %d' % int(action['rotation'])
             del action['rotation']
-            del action['rotateOnTeleport']
         if 'horizon' in action:
             action_str += ' h: %d' % int(action['horizon'])
             del action['horizon']
+        if 'standing' in action:
+            del action['standing']
     elif 'Goto' in a_type:
         action_str = a_type
         if 'location' in action:
@@ -373,5 +380,3 @@ def store_image_name(name):
     constants.data_dict['images'].append({"high_idx": get_last_hl_action_index(),
                                           "low_idx": get_last_ll_action_index(),
                                           "image_name": name})
-
-

@@ -126,7 +126,7 @@ class GameStateBase(object):
                 renderDepthImage=constants.RENDER_DEPTH_IMAGE,
                 renderClassImage=constants.RENDER_CLASS_IMAGE,
                 renderObjectImage=constants.RENDER_OBJECT_IMAGE,
-                visibility_distance=constants.VISIBILITY_DISTANCE,
+                visibilityDistance=constants.VISIBILITY_DISTANCE,
                 makeAgentsVisible=False,
             ))
 
@@ -176,14 +176,15 @@ class GameStateBase(object):
         start_point = self.gt_graph.points[start_point, :].copy()
         self.start_point = (start_point[0], start_point[1], self.local_random.randint(0, 3))
 
-        action = {'action': 'TeleportFull',
-                  'x': self.start_point[0] * constants.AGENT_STEP_SIZE,
-                  'y': self.agent_height,
-                  'z': self.start_point[1] * constants.AGENT_STEP_SIZE,
-                  'rotateOnTeleport': True,
-                  'horizon': 30,
-                  'rotation': self.start_point[2] * 90,
-                  }
+        action = {
+            'action': 'TeleportFull',
+            'x': self.start_point[0] * constants.AGENT_STEP_SIZE,
+            'y': self.agent_height,
+            'z': self.start_point[1] * constants.AGENT_STEP_SIZE,
+            'rotation': {'x': 0, 'y': self.start_point[2] * 90, 'z': 0},
+            'horizon': 30,
+            'standing': True,
+        }
         self.event = self.env.step(action)
 
         constants.data_dict['scene']['scene_num'] = self.scene_num
@@ -781,12 +782,13 @@ class GameStateBase(object):
                 if np.min(point_dists) > 0.0001:
                     print('Point teleport failure')
                     self.event = self.env.step({
-                        'action': 'Teleport',
+                        'action': 'TeleportFull',
                         'x': start_pose[0] * constants.AGENT_STEP_SIZE,
                         'y': self.agent_height,
                         'z': start_pose[1] * constants.AGENT_STEP_SIZE,
-                        'rotateOnTeleport': True,
-                        'rotation': new_pose[2] * 90,
+                        'rotation': {'x': 0, 'y': new_pose[2] * 90, 'z': 0},
+                        'horizon': new_pose[3],
+                        'standing': True,
                     })
                     self.env.last_event.metadata['lastActionSuccess'] = False
 

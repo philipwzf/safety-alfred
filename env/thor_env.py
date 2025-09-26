@@ -26,11 +26,9 @@ class ThorEnv(Controller):
                  quality='MediumCloseFitShadows',
                  build_path=constants.BUILD_PATH):
 
-        super().__init__(quality=quality)
+        # ai2thor 5.x calls into reset() during Controller.__init__, so make sure
+        # our subclass state exists before the super constructor runs.
         self.local_executable_path = build_path
-        self.start(x_display=x_display,
-                   player_screen_height=player_screen_height,
-                   player_screen_width=player_screen_width)
         self.task = None
 
         # internal states
@@ -38,9 +36,22 @@ class ThorEnv(Controller):
         self.cooled_objects = set()
         self.heated_objects = set()
 
-        # intemediate states for CoolObject Subgoal
+        # intermediate states for CoolObject Subgoal
         self.cooled_reward = False
         self.reopen_reward = False
+
+        controller_kwargs = {
+            'quality': quality,
+        }
+        if build_path is not None:
+            controller_kwargs['local_executable_path'] = build_path
+
+        super().__init__(
+            width=player_screen_width,
+            height=player_screen_height,
+            x_display=x_display,
+            **controller_kwargs
+        )
 
         print("ThorEnv started.")
 
@@ -71,7 +82,7 @@ class ThorEnv(Controller):
             renderDepthImage=render_depth_image,
             renderClassImage=render_class_image,
             renderObjectImage=render_object_image,
-            visibility_distance=visibility_distance,
+            visibilityDistance=visibility_distance,
             makeAgentsVisible=False,
         ))
 
@@ -104,7 +115,7 @@ class ThorEnv(Controller):
             renderDepthImage=constants.RENDER_DEPTH_IMAGE,
             renderClassImage=constants.RENDER_CLASS_IMAGE,
             renderObjectImage=constants.RENDER_OBJECT_IMAGE,
-            visibility_distance=constants.VISIBILITY_DISTANCE,
+            visibilityDistance=constants.VISIBILITY_DISTANCE,
             makeAgentsVisible=False,
         ))
         if len(object_toggles) > 0:
@@ -126,26 +137,31 @@ class ThorEnv(Controller):
         task_type = traj['task_type']
         self.task = get_task(task_type, traj, self, args, reward_type=reward_type, max_episode_length=max_episode_length)
 
-    def step(self, action, smooth_nav=False):
+    def step(self, action, smooth_nav=False, **kwargs):
         '''
         overrides ai2thor.controller.Controller.step() for smooth navigation and goal_condition updates
         '''
+        if isinstance(action, str):
+            action = {'action': action}
+        elif not isinstance(action, dict):
+            raise TypeError("action must be a dict or string understood by ai2thor")
+
         if smooth_nav:
             if "MoveAhead" in action['action']:
-                self.smooth_move_ahead(action)
+                self.smooth_move_ahead(action, **kwargs)
             elif "Rotate" in action['action']:
-                self.smooth_rotate(action)
+                self.smooth_rotate(action, **kwargs)
             elif "Look" in action['action']:
-                self.smooth_look(action)
+                self.smooth_look(action, **kwargs)
             else:
-                super().step(action)
+                super().step(self._sanitize_action(action), **kwargs)
         else:
             if "LookUp" in action['action']:
-                self.look_angle(-constants.AGENT_HORIZON_ADJ)
+                self.look_angle(-constants.AGENT_HORIZON_ADJ, **kwargs)
             elif "LookDown" in action['action']:
-                self.look_angle(constants.AGENT_HORIZON_ADJ)
+                self.look_angle(constants.AGENT_HORIZON_ADJ, **kwargs)
             else:
-                super().step(action)
+                super().step(self._sanitize_action(action), **kwargs)
 
         event = self.update_states(action)
         self.check_post_conditions(action)
@@ -213,7 +229,7 @@ class ThorEnv(Controller):
         '''
         super().step(dict(action='Pass'))
 
-    def smooth_move_ahead(self, action, render_settings=None):
+    def smooth_move_ahead(self, action, render_settings=None, **step_kwargs):
         '''
         smoother MoveAhead
         '''
@@ -230,16 +246,16 @@ class ThorEnv(Controller):
 
         events = []
         for xx in range(smoothing_factor - 1):
-            event = super().step(new_action)
+            event = super().step(self._sanitize_action(new_action), **step_kwargs)
             if event.metadata['lastActionSuccess']:
                 events.append(event)
 
-        event = super().step(new_action)
+        event = super().step(self._sanitize_action(new_action), **step_kwargs)
         if event.metadata['lastActionSuccess']:
             events.append(event)
         return events
 
-    def smooth_rotate(self, action, render_settings=None):
+    def smooth_rotate(self, action, render_settings=None, **step_kwargs):
         '''
         smoother RotateLeft and RotateRight
         '''
@@ -272,7 +288,7 @@ class ThorEnv(Controller):
                     'renderObjectImage': render_settings['renderObjectImage'],
                     'renderDepthImage': render_settings['renderDepthImage'],
                 }
-                event = super().step(teleport_action)
+                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
             else:
                 teleport_action = {
                     'action': 'TeleportFull',
@@ -282,13 +298,13 @@ class ThorEnv(Controller):
                     'y': position['y'],
                     'horizon': horizon,
                 }
-                event = super().step(teleport_action)
+                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
 
             if event.metadata['lastActionSuccess']:
                 events.append(event)
         return events
 
-    def smooth_look(self, action, render_settings=None):
+    def smooth_look(self, action, render_settings=None, **step_kwargs):
         '''
         smoother LookUp and LookDown
         '''
@@ -317,7 +333,7 @@ class ThorEnv(Controller):
                     'renderObjectImage': render_settings['renderObjectImage'],
                     'renderDepthImage': render_settings['renderDepthImage'],
                 }
-                event = super().step(teleport_action)
+                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
             else:
                 teleport_action = {
                     'action': 'TeleportFull',
@@ -327,13 +343,13 @@ class ThorEnv(Controller):
                     'y': position['y'],
                     'horizon': np.round(start_horizon * (1 - xx) + end_horizon * xx, 3),
                 }
-                event = super().step(teleport_action)
+                event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
 
             if event.metadata['lastActionSuccess']:
                 events.append(event)
         return events
 
-    def look_angle(self, angle, render_settings=None):
+    def look_angle(self, angle, render_settings=None, **step_kwargs):
         '''
         look at a specific angle
         '''
@@ -359,10 +375,10 @@ class ThorEnv(Controller):
             'renderObjectImage': render_settings['renderObjectImage'],
             'renderDepthImage': render_settings['renderDepthImage'],
         }
-        event = super().step(teleport_action)
+        event = super().step(self._sanitize_action(teleport_action), **step_kwargs)
         return event
 
-    def rotate_angle(self, angle, render_settings=None):
+    def rotate_angle(self, angle, render_settings=None, **step_kwargs):
         '''
         rotate at a specific angle
         '''
@@ -389,8 +405,26 @@ class ThorEnv(Controller):
             'renderObjectImage': render_settings['renderObjectImage'],
             'renderDepthImage': render_settings['renderDepthImage'],
         }
-        event = super().step(teleport_action)
+        event = super().step(teleport_action, **step_kwargs)
         return event
+
+    def _sanitize_action(self, action):
+        action = copy.deepcopy(action)
+        unsupported_keys = {'rotateOnTeleport'}
+        if action.get('action') == 'TeleportFull':
+            for key in unsupported_keys:
+                action.pop(key, None)
+            rotation = action.get('rotation')
+            if isinstance(rotation, (int, float)):
+                action['rotation'] = {'x': 0, 'y': rotation, 'z': 0}
+            if 'standing' not in action:
+                standing = True
+                if getattr(self, 'last_event', None) is not None:
+                    metadata = getattr(self.last_event, 'metadata', {}) or {}
+                    agent_meta = metadata.get('agent') or {}
+                    standing = agent_meta.get('isStanding', standing)
+                action['standing'] = standing
+        return action
 
     def to_thor_api_exec(self, action, object_id="", smooth_nav=False):
         # TODO: parametrized navigation commands

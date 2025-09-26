@@ -343,8 +343,8 @@ Generate the action sequence to achieve all subgoals:
                 properties.append(f"{'cooked' if obj['isCooked'] else 'uncooked'}")
             if obj.get('isSliced'):
                 properties.append("sliced")
-            if obj['ObjectTemperature'] != 'RoomTemp':
-                properties.append(f"temperature: {obj['ObjectTemperature']}")
+            if obj['temperature'] != 'RoomTemp':
+                properties.append(f"temperature: {obj['temperature']}")
             if obj['parentReceptacles']:
                 properties.append(f"in receptacle: {', '.join(obj['parentReceptacles'])}")
             if obj['receptacleObjectIds']:

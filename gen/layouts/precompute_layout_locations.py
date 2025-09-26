@@ -41,14 +41,15 @@ def get_obj(env, open_test_objs, reachable_points, agent_height, scene_name, goo
                 if good_obj_point is not None and horizon != good_obj_point[2]:
                     continue
 
-                action = {'action': 'TeleportFull',
-                          'x': point[0],
-                          'y': agent_height,
-                          'z': point[1],
-                          'rotateOnTeleport': True,
-                          'rotation': rotation * 90,
-                          'horizon': horizon
-                          }
+                action = {
+                    'action': 'TeleportFull',
+                    'x': point[0],
+                    'y': agent_height,
+                    'z': point[1],
+                    'rotation': {'x': 0, 'y': rotation * 90, 'z': 0},
+                    'horizon': horizon,
+                    'standing': True,
+                }
                 event = env.step(action)
                 if event.metadata['lastActionSuccess']:
 
@@ -165,22 +166,27 @@ def run():
             scene_receptacles = set()
             for point in reachable_points:
                 point_is_valid = True
-                action = {'action': 'TeleportFull',
-                          'x': point[0],
-                          'y': agent_height,
-                          'z': point[1],
-                          }
+                action = {
+                    'action': 'TeleportFull',
+                    'x': point[0],
+                    'y': agent_height,
+                    'z': point[1],
+                    'rotation': {'x': 0, 'y': 0, 'z': 0},
+                    'horizon': 0,
+                    'standing': True,
+                }
                 event = env.step(action)
                 if event.metadata['lastActionSuccess']:
                     for horizon in [-30, 0, 30]:
-                        action = {'action': 'TeleportFull',
-                                  'x': point[0],
-                                  'y': agent_height,
-                                  'z': point[1],
-                                  'rotateOnTeleport': True,
-                                  'rotation': 0,
-                                  'horizon': horizon
-                                  }
+                        action = {
+                            'action': 'TeleportFull',
+                            'x': point[0],
+                            'y': agent_height,
+                            'z': point[1],
+                            'rotation': {'x': 0, 'y': 0, 'z': 0},
+                            'horizon': horizon,
+                            'standing': True,
+                        }
                         event = env.step(action)
                         if not event.metadata['lastActionSuccess']:
                             point_is_valid = False
@@ -203,14 +209,15 @@ def run():
                         # First try up, then down, then return to the horizon before moving again.
                         for horizon in [-30, 0, 30]:
 
-                            action = {'action': 'TeleportFull',
-                                      'x': point[0],
-                                      'y': agent_height,
-                                      'z': point[1],
-                                      'rotateOnTeleport': True,
-                                      'rotation': rotation * 90,
-                                      'horizon': horizon
-                                      }
+                            action = {
+                                'action': 'TeleportFull',
+                                'x': point[0],
+                                'y': agent_height,
+                                'z': point[1],
+                                'rotation': {'x': 0, 'y': rotation * 90, 'z': 0},
+                                'horizon': horizon,
+                                'standing': True,
+                            }
                             event = env.step(action)
                             for obj in event.metadata['objects']:
                                 if (obj['visible'] and obj['objectId'] and obj['receptacle'] and not obj['pickupable']
@@ -304,14 +311,15 @@ def run():
                                                 else:
                                                     good_obj_point = get_obj(env, open_test_objs, reachable_points,
                                                                              agent_height, scene_name, good_obj_point)
-                                                    action = {'action': 'TeleportFull',
-                                                              'x': point[0],
-                                                              'y': agent_height,
-                                                              'z': point[1],
-                                                              'rotateOnTeleport': True,
-                                                              'rotation': rotation * 90,
-                                                              'horizon': horizon
-                                                              }
+                                                    action = {
+                                                        'action': 'TeleportFull',
+                                                        'x': point[0],
+                                                        'y': agent_height,
+                                                        'z': point[1],
+                                                        'rotation': {'x': 0, 'y': rotation * 90, 'z': 0},
+                                                        'horizon': horizon,
+                                                        'standing': True,
+                                                    }
                                                     event = env.step(action)
 
                                     # Regardless of what happened up there, try to close the receptacle again if
