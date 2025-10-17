@@ -157,7 +157,7 @@ class ThorEnv(Controller):
             renderClassImage=constants.RENDER_CLASS_IMAGE,
             renderObjectImage=constants.RENDER_OBJECT_IMAGE,
             visibilityDistance=constants.VISIBILITY_DISTANCE,
-            makeAgentsVisible=False,
+            makeAgentsVisible=True,
             renderInstanceSegmentation=True,
             agentCount=self.agent_count,
         ))

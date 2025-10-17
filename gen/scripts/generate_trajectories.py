@@ -394,17 +394,30 @@ def main(args):
 
     # objects-to-scene and scene-to-objects database
     for scene_type, ids in constants.SCENE_TYPE.items():
-        for id in ids:
-            obj_json_file = os.path.join('layouts', 'FloorPlan%d-objects.json' % id)
-            with open(obj_json_file, 'r') as of:
-                scene_objs = json.load(of)
+        # Debug
+        id = 2
+        obj_json_file = os.path.join('layouts', 'FloorPlan%d-objects.json' % id)
+        with open(obj_json_file, 'r') as of:
+            scene_objs = json.load(of)
 
-            id_str = str(id)
-            scene_id_to_objs[id_str] = scene_objs
-            for obj in scene_objs:
-                if obj not in obj_to_scene_ids:
-                    obj_to_scene_ids[obj] = set()
-                obj_to_scene_ids[obj].add(id_str)
+        id_str = str(id)
+        scene_id_to_objs[id_str] = scene_objs
+        for obj in scene_objs:
+            if obj not in obj_to_scene_ids:
+                obj_to_scene_ids[obj] = set()
+            obj_to_scene_ids[obj].add(id_str)
+            
+        # for id in ids:
+        #     obj_json_file = os.path.join('layouts', 'FloorPlan%d-objects.json' % id)
+        #     with open(obj_json_file, 'r') as of:
+        #         scene_objs = json.load(of)
+
+        #     id_str = str(id)
+        #     scene_id_to_objs[id_str] = scene_objs
+        #     for obj in scene_objs:
+        #         if obj not in obj_to_scene_ids:
+        #             obj_to_scene_ids[obj] = set()
+        #         obj_to_scene_ids[obj].add(id_str)
 
     # scene-goal database
     for g in constants.GOALS:

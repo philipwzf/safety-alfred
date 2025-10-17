@@ -7,6 +7,6 @@ tqdm
 vocab
 revtok
 Pillow
-ai2thor==2.1.0
+ai2thor
 flask==2.0.3
 Werkzeug==2.0.3

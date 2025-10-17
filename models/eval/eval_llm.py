@@ -133,7 +133,7 @@ class EvalLLM:
         
         return successes, failures, results
 
-    def setup_scene(self, env, traj_data, args, reward_type='dense'):
+    def setup_scene(self, env, traj_data, args, reward_type='sparse'):
         """
         Setup scene from trajectory data
         """
@@ -249,7 +249,7 @@ class EvalLLM:
         self._current_trace = trace
         try:
             # setup scene
-            reward_type = 'dense'
+            reward_type = 'sparse'
             self.setup_scene(env, traj_data, args, reward_type=reward_type)
 
             # goal instruction

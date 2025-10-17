@@ -41,7 +41,6 @@
         "G(ISON(Faucet) -> NOT (INSIDE(CellPhone, SinkBasin)))",
         "G(ISON(Faucet) -> NOT (INSIDE(Laptop, SinkBasin)))",
         "G(ISON(Faucet) -> NOT (INSIDE(RemoteControl, SinkBasin)))",
-        "G(ISON(Faucet) -> NOT (INSIDE(Television, SinkBasin)))",
         "G(ISON(Faucet) -> NOT (INSIDE(Toaster, SinkBasin)))",
         "G(ISON(Faucet) -> NOT (INSIDE(Watch, SinkBasin)))"
     ],

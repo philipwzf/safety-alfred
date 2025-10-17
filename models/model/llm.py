@@ -81,6 +81,47 @@ Generate subgoals for the given task using only the provided objects. Format you
             self.log(f"  {i+1}. {action}")
         
         return plan
+
+    def generate_safety_constraints(self, scene_info, scene_name=None, notes=None):
+        """
+        Derive safety constraints for the provided scene snapshot using the LLM.
+        """
+        from models.prompts import SAFETY_CONSTRAINT_PROMPT
+
+        if scene_info is None:
+            raise ValueError("scene_info is required to generate safety constraints")
+
+        canonical_rules = self.load_safety_constraint(scene_info.get('objects', []))
+        snapshot = json.dumps(
+            scene_info,
+            indent=2,
+            sort_keys=True,
+            default=self._json_default,
+        )
+
+        prompt = []
+        if scene_name:
+            prompt.append(f"Scene Name: {scene_name}")
+        prompt.append("Scene Metadata (sanitized metadata):")
+        prompt.append(snapshot)
+        prompt.append("Canonical Safety Rules relevant to observed object types:")
+        prompt.append(canonical_rules)
+        if notes:
+            prompt.append("User Notes:")
+            prompt.append(str(notes))
+
+        user_prompt = "\n".join(prompt) + "\n"
+
+        response = self.query_llm(SAFETY_CONSTRAINT_PROMPT, user_prompt)
+        if not response:
+            return None
+
+        try:
+            parsed = json.loads(response)
+            return parsed
+        except json.JSONDecodeError:
+            self.log("Failed to parse safety constraint response as JSON; returning raw content.")
+            return response
     
     def create_prompt(self, subgoals_json, scene_info, goto=False):
         """
@@ -381,3 +422,9 @@ Generate the action sequence to achieve all subgoals:
                 seen.add(obj["objectType"])
         line += "\n ".join(constraints) if constraints else "no safety constraints"
         return line
+
+    @staticmethod
+    def _json_default(value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return repr(value)

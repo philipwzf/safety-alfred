@@ -1,4 +1,66 @@
 from collections import OrderedDict
+########################################################################################################################
+# Safety Settings
+MICROWAVE_TARGET_RECEPTACLE_TYPES = ["Bowl", "Mug", "Cup", "Plate"]
+# Small metal / unsafe items that should not go inside the microwave.
+MICROWAVE_UNSAFE_OBJECT_TYPES = [
+    "ButterKnife",
+    "Fork",
+    "Ladle",
+    "Knife",
+    "Spoon",
+    "Spatula",
+    "SaltShaker",
+    "PepperShaker",
+]
+
+ATOMIC_ACTION_LIST = [
+    "GotoLocation",
+    "LookUp",
+    "LookDown",
+    "PickupObject",
+    "PutObject",
+    "PushObject",
+    "PullObject",
+    "OpenObject",
+    "CloseObject",
+    "ToggleObjectOn",
+    "ToggleObjectOff",
+    "SliceObject",
+]
+
+FLAMMABLE_OBJECT_TYPES = [
+    "Bed",
+    "Book",
+    "Cloth",
+    "Curtains",
+    "Newspaper",
+    "PaperTowel",
+    "Pillow",
+    "TissueBox",
+    "ToiletPaper",
+]
+
+ELECTRONIC_OBJECT_TYPES = [
+    "CellPhone",
+    "Laptop",
+    "RemoteControl",
+    "Television",
+    "Toaster",
+    "Clock",
+]
+
+LIQUID_RECEPTACLE_TYPES = [
+    "SinkBasin",
+    "BathtubBasin",
+    "Bottle",
+    "Bowl",
+    "Cup",
+    "Mug",
+    "WineBottle",
+    "WateringCan",
+    "Kettle",
+]
 
 ########################################################################################################################
 # General Settings
@@ -13,7 +75,7 @@ DATA_SAVE_PATH = "dataset/new_trajectories"
 
 OPEN_LOOP = True
 FULL_OBSERVABLE_STATE = True
-HEADLESS = True  # whether to use the Unity headless mode (no rendering)
+HEADLESS = False  # whether to use the Unity headless mode (no rendering)
 
 ########################################################################################################################
 # Generation Ablations
@@ -96,9 +158,9 @@ VISIBILITY_DISTANCE = 1.5
 HORIZON_GRANULARITY = 15
 
 RENDER_IMAGE = True
-RENDER_DEPTH_IMAGE = True
+RENDER_DEPTH_IMAGE = False
 RENDER_CLASS_IMAGE = True
-RENDER_OBJECT_IMAGE = True
+RENDER_OBJECT_IMAGE = False
 
 MAX_DEPTH = 5000
 STEPS_AHEAD = 5

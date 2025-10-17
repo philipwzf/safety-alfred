@@ -19,7 +19,7 @@ class LLMAstar(LLMAgent):
         if action is None:
             return None
 
-        object_id = action.get("object_id") or action.get("objectId")
+        object_id = action.get("objectId")
         if not object_id:
             return None
 

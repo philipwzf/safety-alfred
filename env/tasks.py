@@ -44,14 +44,6 @@ class BaseTask(object):
             reward_config = json.load(rc)
         self.reward_config = reward_config
 
-    def load_nav_graph(self):
-        '''
-        build navigation grid graph
-        '''
-        floor_plan = self.traj['scene']['floor_plan']
-        scene_num = self.traj['scene']['scene_num']
-        self.gt_graph = graph_obj.Graph(use_gt=True, construct_graph=True, scene_id=scene_num)
-
     def get_num_subgoals(self, high_pddl):
         '''
         number of subgoals in high-level pddl plan

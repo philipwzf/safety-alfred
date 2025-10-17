@@ -299,13 +299,32 @@ def get_objects_of_type(object_type, metadata):
 
 
 def get_obj_of_type_closest_to_obj(object_type, ref_object_id, metadata):
-    objs_of_type = [obj for obj in metadata['objects'] if obj['objectType'] == object_type and obj['visible']]
+    """
+    Return the closest object of ``object_type`` to ``ref_object_id``.
+
+    Prior implementations required the candidate object to be visible which can fail
+    when the simulator toggles or cleans objects outside the agent's current view.
+    We now prefer visible objects but gracefully fall back to any object of the type
+    so callers do not see spurious exceptions.
+    """
     ref_obj = get_object(ref_object_id, metadata)
-    closest_objs_of_type = sorted(objs_of_type, key=lambda o: np.linalg.norm(np.array([o['position']['x'], o['position']['y'], o['position']['z']]) - \
-                                                                             np.array([ref_obj['position']['x'], ref_obj['position']['y'], ref_obj['position']['z']])))
-    if len(closest_objs_of_type) == 0:
-        raise Exception("No closest %s found!" % (ref_obj))
-    return closest_objs_of_type[0] # retrun the first closest visible object
+    if ref_obj is None:
+        raise Exception("Reference object '%s' not found in metadata." % (ref_object_id))
+
+    objs_of_type = [obj for obj in metadata['objects'] if obj['objectType'] == object_type]
+    if len(objs_of_type) == 0:
+        raise Exception("No objects of type '%s' found near %s." % (object_type, ref_obj))
+
+    visible_objs = [obj for obj in objs_of_type if obj.get('visible')]
+    candidates = visible_objs if len(visible_objs) > 0 else objs_of_type
+    closest_objs_of_type = sorted(
+        candidates,
+        key=lambda o: np.linalg.norm(
+            np.array([o['position']['x'], o['position']['y'], o['position']['z']]) -
+            np.array([ref_obj['position']['x'], ref_obj['position']['y'], ref_obj['position']['z']])
+        )
+    )
+    return closest_objs_of_type[0]  # return the closest object, visible if possible
 
 
 def get_objects_with_name_and_prop(name, prop, metadata):
@@ -343,7 +362,9 @@ def get_object_bounds_batch(boxes, scene_bounds):
 
 def get_task_str(object_ind, receptacle_ind=None, toggle_ind=None, mrecep_ind=None):
     goal_str = constants.pddl_goal_type
-    if constants.data_dict['pddl_params']['object_sliced']:
+    pddl_params = constants.data_dict.setdefault('pddl_params', {})
+    object_sliced = bool(pddl_params.get('object_sliced', False))
+    if object_sliced:
         goal_str += "_slice"
     template = random.choice(glib.gdict[goal_str]['templates'])
     obj = constants.OBJECTS[object_ind].lower()

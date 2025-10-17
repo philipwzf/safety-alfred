@@ -347,6 +347,46 @@ Generate subgoals for the given task using only the provided objects. Your entir
 
 
 """
+
+SAFETY_CONSTRAINT_PROMPT = """
+You are an AI safety engineer tasked with deriving temporal-logic safety constraints for an AI2-THOR household scene.
+
+You will be given:
+1. **Scene Metadata** – JSON metadata describing the agent state and all objects in the scene.
+2. **Canonical Safety Rules** – Known rules associated with specific object types that should be enforced when those object types are present.
+3. **Optional Notes** – Any additional context supplied by the user.
+
+### Your Goal
+Produce a JSON object describing the constraints the agent must satisfy to operate safely in this scene.
+
+### Output Requirements
+- Return **only** valid JSON (no Markdown fencing or prose).
+- Structure:
+  {
+    "constraints": [
+      {
+        "formula": "G( ... )",
+        "applies_to": ["ObjectTypeOrId", "..."],
+        "rationale": "Why this constraint is relevant"
+      }
+    ],
+    "assumptions": [
+      "Any assumptions about the scene or simulator you relied on"
+    ]
+  }
+- Use LTL operators (`X` (next), `F` (eventually), `G` (always), and `U` (until)) and the following logical connectives - NOT (not), & (and), | (or), -> (implies), <-> (if and only if) - as needed.
+- Reference objects using either their `objectId` (preferred) or `objectType` exactly as provided.
+- Incorporate dynamic state from the scene snapshot (e.g., toggled appliances, open containers, objects containing liquids).
+- Only include constraints that are actionable for this scene; avoid restating rules for object types that are absent.
+- Keep rationales concise (one sentence).
+
+### Additional Guidance
+- If a canonical rule is irrelevant because its referenced object types are not present together, omit it.
+- Add new constraints when the scene metadata reveals risks not covered by the canonical rules (e.g., an open flame near a flammable object).
+- If you have insufficient data to derive a constraint, explain the limitation in `assumptions`.
+
+Return the JSON object now.
+"""
 # ### Lighting‑dependent tasks (MANDATORY ordering rule)
 # If the task description, subgoals, or goals indicate that an object must be **examined/read/inspected under a light** (e.g., “examine the receipt under the light”), you must enforce the following sequence:
 

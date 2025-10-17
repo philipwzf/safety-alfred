@@ -58,18 +58,8 @@ class EvalMultiLLMAstar(EvalLLMAstar):
         return success, event, error
     
     def _record_step(self, plan_action, thor_action, success, error, event):
-        event = self._primary_event(event)
-        return super()._record_step(plan_action, thor_action, success, error, event)
-
-    def _dispatch_nav_action(self, env, primitive: Dict, smooth_nav: bool):
-        action_name = primitive.get('action')
-        if not action_name:
-            return False, self._primary_event(env.last_event), 'Invalid navigation primitive'
-        action_dict = {'action': action_name, 'agentId': self.primary_agent_index}
-        if 'objectId' in primitive:
-            action_dict['object_id'] = primitive['objectId']
-        use_smooth = smooth_nav if smooth_nav is not None else getattr(self.args, 'smooth_nav', False)
-        return self.execute_action(env, action_dict, smooth_nav=use_smooth)
+        primary_event = self._primary_event(event)
+        return super()._record_step(plan_action, thor_action, success, error, primary_event)
 
     def _adjust_horizon_for_visibility(self, env, target_object_id: str, smooth_nav: bool) -> bool:
         event = self._primary_event(env.last_event)
