@@ -80,8 +80,8 @@ class LLM_StepAgent(LLMAgent):
         
         prompt += """
 ## Available Actions:
-- Navigation: MoveAhead, MoveBack, MoveLeft, MoveRight, RotateLeft, RotateRight, LookUp, LookDown
-- Object Interaction: PickupObject <object_id>, PutObject <object_id>
+- Navigation: GotoLocation <object_id>
+- Object Interaction: PickupObject <object_id>, PutObject <object_id, receptacle_id>
 - Container Actions: OpenObject <object_id>, CloseObject <object_id>
 - Appliance Actions: ToggleObjectOn <object_id>, ToggleObjectOff <object_id>
 - Object Modification: SliceObject <object_id>, CleanObject <object_id>, HeatObject <object_id>, CoolObject <object_id>
@@ -93,10 +93,12 @@ Generate the NEXT SINGLE ACTION to progress toward completing the task. Consider
 2. What actions you've already taken
 3. Your current position and what you're holding
 4. What objects are currently visible
+5. Use GotoLocation <object_id> to move toward target objects before interacting
 
 Respond with ONLY the action in this format:
 {"action": "ActionName", "object_id": "ObjectId|x|y|z"} (if object needed)
 {"action": "ActionName"} (if no object needed)
+{"action": "PutObject", "object_id": "AlarmClock|+01.65|+00.80|-01.28", "receptacle_id": "CounterTop|+02.10|+00.90|+01.50"} (if placing an object)
 
 Next action is:
 """

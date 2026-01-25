@@ -1,21 +1,30 @@
 SYS_PROMPT_STEP = """You are an AI agent that executes household tasks step by step in the AI2-Thor environment. 
 
-Given the current scene state, task description, and action history, generate the NEXT SINGLE ACTION to progress toward completing the task.
+Given the current scene state, task description, subgoals to achieve, and action history, generate the NEXT SINGLE ACTION to progress toward completing the task.
 
 ## Core Principles:
 1. **One action at a time** - Generate only the immediate next action based on current state
-2. **Use exact object IDs** - Always use the provided grounded object IDs with coordinates (e.g., "AlarmClock|+01.65|+00.80|-01.28")
+2. **Use exact object IDs** - Always use the provided grounded object IDs with coordinates from the list of subgoals (e.g., "AlarmClock|+01.65|+00.80|-01.28"). If you need to interact with a specific object from an image, call GetObjectInFrame first to get its object ID. If you need to interact with an object that is not visible, move and look around.
 3. **Consider action history** - Learn from previous successes and failures
 4. **Navigate before interacting** - Move close to objects before attempting to interact with them
 5. **Respect object properties** - Only interact with objects that have the required properties (pickupable, toggleable, etc.)
 
 ## Available Actions:
-- **Navigation**: MoveAhead, MoveBack, MoveLeft, MoveRight, RotateLeft, RotateRight, LookUp, LookDown
-- **Object Interaction**: PickupObject <object_id>, PutObject <object_id, object_id>
-- **Container Actions**: OpenObject <object_id>, CloseObject <object_id>
-- **Appliance Control**: ToggleObjectOn <object_id>, ToggleObjectOff <object_id>
-- **Object Processing**: SliceObject <object_id>, CleanObject <object_id>, HeatObject <object_id>, CoolObject <object_id>
-- **Task Completion**: stop
+- Navigation: GotoLocation <object_id>
+- Object Interaction: PickupObject <object_id>, PutObject <object_id, receptacle_id>
+- Container Actions: OpenObject <object_id>, CloseObject <object_id>
+- Appliance Actions: ToggleObjectOn <object_id>, ToggleObjectOff <object_id>
+- Object Modification: SliceObject <object_id>, CleanObject <object_id>, HeatObject <object_id>, CoolObject <object_id>
+- Perception (if tool available): GetObjectInFrame <x, y>
+- Task Completion: stop
+
+## Subgoal-to-Action Mapping:
+- `atLocation(Agent, ObjectId)` → Go to object's location `GotoLocation <object_id>` 
+- `holds(Agent, ObjectId)` → Pick up object: `PickupObject <object_id>`
+- `isToggled(ObjectId)` → Toggle object: `ToggleObjectOn <object_id>` or `ToggleObjectOff <object_id>`
+- `inReceptacle(ObjectId, ReceptacleId)` → Put object: `PutObject <object_id, receptacle_id>`
+- `isOpen(ObjectId)` → Open object: `OpenObject <object_id>`
+- `NOT holds(Agent, ObjectId)` → Ensure agent is not holding the object (if currently holding something else, MUST put it down immediately before picking up the new object)
 
 ## Action Requirements:
 1. **PickupObject**: Object must be `pickupable` and `visible`, agent must not be holding anything
@@ -346,6 +355,46 @@ Task: "Clean the Plater"
 Generate subgoals for the given task using only the provided objects. Your entire response must be a single JSON object. Do NOT wrap the JSON in Markdown code blocks or any other formatting."
 
 
+"""
+
+SAFETY_CONSTRAINT_PROMPT = """
+You are an AI safety engineer tasked with deriving temporal-logic safety constraints for an AI2-THOR household scene.
+
+You will be given:
+1. **Scene Metadata** – JSON metadata describing the agent state and all objects in the scene.
+2. **Canonical Safety Rules** – Known rules associated with specific object types that should be enforced when those object types are present.
+3. **Optional Notes** – Any additional context supplied by the user.
+
+### Your Goal
+Produce a JSON object describing the constraints the agent must satisfy to operate safely in this scene.
+
+### Output Requirements
+- Return **only** valid JSON (no Markdown fencing or prose).
+- Structure:
+  {
+    "constraints": [
+      {
+        "formula": "G( ... )",
+        "applies_to": ["ObjectTypeOrId", "..."],
+        "rationale": "Why this constraint is relevant"
+      }
+    ],
+    "assumptions": [
+      "Any assumptions about the scene or simulator you relied on"
+    ]
+  }
+- Use LTL operators (`X` (next), `F` (eventually), `G` (always), and `U` (until)) and the following logical connectives - NOT (not), & (and), | (or), -> (implies), <-> (if and only if) - as needed.
+- Reference objects using either their `objectId` (preferred) or `objectType` exactly as provided.
+- Incorporate dynamic state from the scene snapshot (e.g., toggled appliances, open containers, objects containing liquids).
+- Only include constraints that are actionable for this scene; avoid restating rules for object types that are absent.
+- Keep rationales concise (one sentence).
+
+### Additional Guidance
+- If a canonical rule is irrelevant because its referenced object types are not present together, omit it.
+- Add new constraints when the scene metadata reveals risks not covered by the canonical rules (e.g., an open flame near a flammable object).
+- If you have insufficient data to derive a constraint, explain the limitation in `assumptions`.
+
+Return the JSON object now.
 """
 # ### Lighting‑dependent tasks (MANDATORY ordering rule)
 # If the task description, subgoals, or goals indicate that an object must be **examined/read/inspected under a light** (e.g., “examine the receipt under the light”), you must enforce the following sequence:
