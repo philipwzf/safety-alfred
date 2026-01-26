@@ -195,36 +195,5 @@ Next action is:
                 time.sleep(wait_time)
         return None
 
-    def get_navigation_target(self, action, metadata=None):
-        """
-        Return a position dict for navigation actions.
-        Borrowed from LLMAstar to support GotoLocation execution in EvalLLMAstar.
-        """
-        if action is None:
-            return None
-
-        object_id = action.get("object_id") or action.get("objectId")
-        if not object_id:
-            return None
-
-        # Priority 1: Check metadata for exact object position if available
-        if metadata and "objects" in metadata:
-            for obj in metadata["objects"]:
-                if obj.get("objectId") == object_id:
-                    position = obj.get("position")
-                    if position:
-                        return {"x": position.get("x", 0.0),
-                                "y": position.get("y", 0.0),
-                                "z": position.get("z", 0.0)}
-
-        # Priority 2: Parse coordinates from object ID string (e.g. "AlarmClock|1.2|0.5|3.4")
-        parts = object_id.split("|")
-        if len(parts) >= 4:
-            try:
-                return {"x": float(parts[1]),
-                        "y": float(parts[2]),
-                        "z": float(parts[3])}
-            except ValueError:
-                return None
-
-        return None
+    # Note: get_navigation_target() is inherited from LLM_StepAgent
+    # and used by EvalLLMAstar._execute_goto() for A* navigation
