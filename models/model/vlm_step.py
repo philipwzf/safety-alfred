@@ -135,7 +135,7 @@ Next action is:
             data = {
                 "model": getattr(self.args, 'llm_model', 'openai/gpt-4o-mini'),
                 "messages": messages,
-                "max_tokens": getattr(self.args, 'max_tokens', 1000),
+                "max_tokens": getattr(self.args, 'max_tokens', 10000),
                 "temperature": getattr(self.args, 'temperature', 0.6),
                 "top_p": getattr(self.args, 'top_p', 1.0),
                 "frequency_penalty": getattr(self.args, 'frequency_penalty', 0.0),

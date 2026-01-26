@@ -75,7 +75,7 @@ def main() -> int:
                         help='Root directory containing task folders')
     parser.add_argument('--pattern', type=str, default='candle',
                         help='Substring to match task folder names')
-    parser.add_argument('--eval-script', type=Path, default=repo_root / 'models' / 'eval' / 'eval_llm_astar.py',
+    parser.add_argument('--eval-script', type=Path, default=repo_root / 'models' / 'eval' / 'eval_vlm_step.py',
                         help='Path to eval_llm_astar.py')
     parser.add_argument('--ridx', type=int, nargs='*', default=[0],
                         help='Repeat indices to evaluate (default: 0)')

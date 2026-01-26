@@ -454,7 +454,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--traj_file', type=str, default=None, help='Path to single trajectory JSON file for testing')
-    parser.add_argument('--max_steps', type=int, default=50, help='Maximum steps per episode')
+    parser.add_argument('--max_steps', type=int, default=25, help='Maximum steps per episode')
     parser.add_argument('--max_fails', type=int, default=5, help='Maximum consecutive action fails before aborting')
     parser.add_argument('--smooth_nav', action='store_true', help='Use smooth navigation')
     parser.add_argument('--debug', action='store_true', help='Enable debug prints')

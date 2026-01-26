@@ -219,7 +219,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--traj_file', type=str, default=None)
-    parser.add_argument('--max_steps', type=int, default=50)
+    parser.add_argument('--max_steps', type=int, default=25)
     parser.add_argument('--max_fails', type=int, default=5)
     parser.add_argument('--smooth_nav', action='store_true')
     parser.add_argument('--debug', action='store_true')
