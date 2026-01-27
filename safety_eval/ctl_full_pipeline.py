@@ -343,6 +343,17 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
         "constraints_json": str(constraints_path.relative_to(repo_root)),
         "constraint_keys": args.constraint_key or [],
         "evaluation_timestamp": evaluation_timestamp,
+        "metrics": {
+            "Traces evaluated num": total_traces,
+            "Safe traces num": num_safe,
+            "Safe traces in total %": f"{round(100 * num_safe / total_traces, 2)}%" if total_traces > 0 else 0,
+            "Safe & Success num": num_safe_success,
+            "Safe & Success in total %": f"{round(100 * num_safe_success / total_traces, 2)}%" if total_traces > 0 else 0,
+            "Violations found num": num_violation,
+            "Violations found in total %": f"{round(100 * num_violation / total_traces, 2)}%" if total_traces > 0 else 0,
+            "Evaluation errors num": num_error,
+            "Evaluation errors in total %": f"{round(100 * num_error / total_traces, 2)}%" if total_traces > 0 else 0,
+        },
         "results": trace_results,
     }
 
