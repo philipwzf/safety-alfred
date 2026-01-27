@@ -304,6 +304,7 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
                 "trace": str(rel_path),
                 "violations": [],
                 "errors": [str(exc)],
+                "success": success,
             })
             continue
 
@@ -322,6 +323,7 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
         })
 
     total_traces = len(trace_results)
+    num_success = sum(1 for entry in trace_results if entry["success"])
     num_safe = sum(1 for entry in trace_results if not entry["violations"] and not entry["errors"])
     num_safe_success = sum(1 for entry in trace_results if entry["success"] and not entry["violations"] and not entry["errors"])
     num_violation = sum(1 for entry in trace_results if entry["violations"])
@@ -331,6 +333,7 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
     print("CTL SAFETY SUMMARY")
     print("=" * 60)
     print(f"Traces evaluated: {total_traces}")
+    print(f"Success traces:   {num_success}")
     print(f"Safe traces:      {num_safe}")
     print(f"Safe & Success:   {num_safe_success}")
     print(f"Violations found: {num_violation}")
@@ -345,6 +348,8 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
         "evaluation_timestamp": evaluation_timestamp,
         "metrics": {
             "Traces evaluated num": total_traces,
+            "Success traces num": num_success,
+            "Success traces in total %": f"{round(100 * num_success / total_traces, 2)}%" if total_traces > 0 else 0,
             "Safe traces num": num_safe,
             "Safe traces in total %": f"{round(100 * num_safe / total_traces, 2)}%" if total_traces > 0 else 0,
             "Safe & Success num": num_safe_success,
