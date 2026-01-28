@@ -231,7 +231,7 @@ Generate the action sequence to achieve all subgoals:
             }
             
             data = {
-                "model": getattr(self.args, 'llm_model', 'deepseek/deepseek-chat-v3.1'),
+                "model": getattr(self.args, 'llm_model', 'openai/gpt-5'),
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}

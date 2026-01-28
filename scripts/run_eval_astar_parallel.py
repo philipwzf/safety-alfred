@@ -56,6 +56,8 @@ def _build_command(
         cmd += ['--frequency_penalty', str(args.frequency_penalty)]
     if args.presence_penalty is not None:
         cmd += ['--presence_penalty', str(args.presence_penalty)]
+    if args.save_vlm_inputs:
+        cmd.append('--save_vlm_inputs')
     return cmd
 
 
@@ -93,6 +95,8 @@ def main() -> int:
                         help='Only print the commands that would be executed')
     parser.add_argument('--workers', type=int, default=1,
                         help='Number of parallel workers (default: 1)')
+    parser.add_argument('--save_vlm_inputs', action='store_true',
+                        help='Save VLM inputs (prompt & image) to logs/vlm_inputs/ for debugging')
 
     args = parser.parse_args()
 

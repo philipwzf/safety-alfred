@@ -303,6 +303,7 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', type=str, default='data/json_2.1.0', help='Data directory')
     parser.add_argument('--num_runs', type=int, default=5, help='Number of runs per trajectory')
     parser.add_argument('--ridx', type=int, default=0, nargs='?', help='Repeat index for single trajectory test')
+    parser.add_argument('--save_vlm_inputs', action='store_true', help='Save VLM inputs (prompt & image) to logs/vlm_inputs/ for debugging')
 
     args = parser.parse_args()
 
