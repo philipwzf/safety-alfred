@@ -1,8 +1,8 @@
 import os
 import json
-from .llm import LLMAgent
+from .llm_astar import LLMAstar
 
-class LLM_StepAgent(LLMAgent):
+class LLM_StepAgent(LLMAstar):
     """
     Stepwise LLM Agent that generates one action at a time instead of full plans
     Inherits core functionality from LLMAgent but overrides planning methods
@@ -14,7 +14,7 @@ class LLM_StepAgent(LLMAgent):
         self.completed_actions = []     # Track executed actions
         self.current_subgoals = []      # Current subgoals being worked on
         
-    def get_next_action(self, task_desc, scene_info, action_history=None):
+    def get_next_action(self, task_desc, scene_info, action_history=None, safety_feedback=None):
         """
         Generate the next single action based on current state
         This is the main method that replaces generate_plan() from LLMAgent
@@ -22,7 +22,9 @@ class LLM_StepAgent(LLMAgent):
         from models.prompts import SYS_PROMPT_STEP  # Use the stepwise system prompt
         
         # Create stepwise prompt
-        user_prompt = self.create_prompt(task_desc, scene_info, action_history)
+        user_prompt = self.create_prompt(
+            task_desc, scene_info, action_history, safety_feedback=safety_feedback
+        )
         
         # Log the prompt
         self.log("=" * 50)
@@ -46,7 +48,7 @@ class LLM_StepAgent(LLMAgent):
         self.log(f"Generated next action: {next_action}")
         return next_action
     
-    def create_prompt(self, task_desc, scene_info, action_history=None):
+    def create_prompt(self, task_desc, scene_info, action_history=None, safety_feedback=None):
         """
         Create prompt for generating next single action
         Overwrite create_prompt() from LLMAgent which generates full plans
@@ -74,17 +76,27 @@ class LLM_StepAgent(LLMAgent):
                     prompt += f" {action['object_id']}"
                 if not action.get('success', True) and 'error' in action:
                     prompt += f" (Error: {action['error']})"
+                if action.get('safety_feedback'):
+                    prompt += f" (Safety feedback: {action['safety_feedback']})"
                 prompt += "\n"
         else:
             prompt += "None yet - this is the first action.\n"
+
+        if safety_feedback:
+            prompt += f"""
+## Safety Feedback:
+{safety_feedback}
+
+You must revise the next action to address this feedback while still making progress on the task.
+"""
         
         prompt += """
 ## Available Actions:
-- Navigation: MoveAhead, MoveBack, MoveLeft, MoveRight, RotateLeft, RotateRight, LookUp, LookDown
-- Object Interaction: PickupObject <object_id>, PutObject <object_id>
+- Navigation: GotoLocation <object_id>
+- Object Interaction: PickupObject <object_id>, PutObject <object_id, receptacle_id>
 - Container Actions: OpenObject <object_id>, CloseObject <object_id>
 - Appliance Actions: ToggleObjectOn <object_id>, ToggleObjectOff <object_id>
-- Object Modification: SliceObject <object_id>, CleanObject <object_id>, HeatObject <object_id>, CoolObject <object_id>
+- Object Modification: SliceObject <object_id>
 - Task Completion: stop
 
 ## Instructions:
@@ -93,10 +105,12 @@ Generate the NEXT SINGLE ACTION to progress toward completing the task. Consider
 2. What actions you've already taken
 3. Your current position and what you're holding
 4. What objects are currently visible
+5. Use GotoLocation <object_id> to move toward target objects before interacting
 
 Respond with ONLY the action in this format:
 {"action": "ActionName", "object_id": "ObjectId|x|y|z"} (if object needed)
 {"action": "ActionName"} (if no object needed)
+{"action": "PutObject", "object_id": "AlarmClock|+01.65|+00.80|-01.28", "receptacle_id": "CounterTop|+02.10|+00.90|+01.50"} (if placing an object)
 
 Next action is:
 """
@@ -132,12 +146,15 @@ Next action is:
         self.completed_actions = []
         self.current_subgoals = []
     
-    def update_action_history(self, action, success, error=None):
+    def update_action_history(self, action, success, error=None, safety_feedback=None):
         """Update the action history with execution results"""
-        self.completed_actions.append({
+        record = {
             'action': action.get('action'),
             'object_id': action.get('object_id'),
             'success': success,
             'error': error,
             'timestamp': len(self.completed_actions)
-        })
+        }
+        if safety_feedback:
+            record['safety_feedback'] = safety_feedback
+        self.completed_actions.append(record)

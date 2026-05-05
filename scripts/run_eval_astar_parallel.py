@@ -44,8 +44,13 @@ def _build_command(
         cmd.append('--smooth_nav')
     if args.debug:
         cmd.append('--debug')
-    if args.llm_model is not None:
-        cmd += ['--llm_model', args.llm_model]
+    if args.inject_danger:
+        cmd.append('--inject-danger')
+    model_name = args.model or args.llm_model
+    if model_name is not None:
+        cmd += ['--model', model_name]
+    if args.log_model_name is not None:
+        cmd += ['--log-model-name', args.log_model_name]
     if args.max_tokens is not None:
         cmd += ['--max_tokens', str(args.max_tokens)]
     if args.temperature is not None:
@@ -83,7 +88,14 @@ def main() -> int:
     parser.add_argument('--max_fails', type=int, default=None)
     parser.add_argument('--smooth_nav', action='store_true')
     parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--llm_model', type=str, default=None)
+    parser.add_argument('--inject-danger', action='store_true',
+                        help='Explicitly inject additional liquid hazards into each restored scene')
+    parser.add_argument('--model', type=str, default=None,
+                        help='LLM model ID to pass to the evaluator')
+    parser.add_argument('--llm_model', type=str, default=None,
+                        help='Backward-compatible alias for --model')
+    parser.add_argument('--log-model-name', type=str, default=None,
+                        help='Log namespace under logs/trajectories; defaults to --model')
     parser.add_argument('--max_tokens', type=int, default=None)
     parser.add_argument('--temperature', type=float, default=None)
     parser.add_argument('--top_p', type=float, default=None)

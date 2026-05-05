@@ -45,7 +45,10 @@ class EvalLLMAstar(EvalLLM):
             return False, env.last_event, 'Navigation graph unavailable'
 
         self._graph.update_map(env)
-        reachable = env.last_event.metadata.get('reachablePositions', []) if env.last_event else []
+        reachable = []
+        if env.last_event:
+            metadata = env.last_event.metadata
+            reachable = metadata.get('reachablePositions') or metadata.get('actionReturn') or []
         nav_point = self._select_navigable_point(reachable, target_position)
         if nav_point is None:
             return False, env.last_event, 'No reachable navigation target'
@@ -85,7 +88,11 @@ class EvalLLMAstar(EvalLLM):
         if success and event and target_object_id:
             visible = self._is_object_visible(event.metadata, target_object_id)
             if not visible:
-                visible = self._adjust_horizon_for_visibility(env, target_object_id, smooth_nav)
+                try:
+                    visible = self._adjust_horizon_for_visibility(env, target_object_id, smooth_nav)
+                except Exception as exc:
+                    event = env.last_event
+                    return False, event, str(exc)
                 event = env.last_event
             success = success and visible
         error = '' if success else (event.metadata.get('errorMessage', '') if event else '')
@@ -175,7 +182,7 @@ class EvalLLMAstar(EvalLLM):
         while current_horizon > min_horizon + 1e-3:
             lookup_success, latest_event, _ = super().execute_action(env, {'action': 'LookUp'}, smooth_nav=smooth_nav)
             if not lookup_success:
-                raise RuntimeError('LookUp action failed during horizon adjustment')
+                return False
             if latest_event and self._is_object_visible(latest_event.metadata, target_object_id):
                 return True
             agent_meta = latest_event.metadata.get('agent', {}) if latest_event.metadata else {}
@@ -186,13 +193,13 @@ class EvalLLMAstar(EvalLLM):
         while current_horizon < max_horizon - 1e-3:
             lookdown_success, latest_event, _ = super().execute_action(env, {'action': 'LookDown'}, smooth_nav=smooth_nav)
             if not lookdown_success:
-                raise RuntimeError('LookDown action failed during horizon adjustment')
+                return False
             if latest_event and self._is_object_visible(latest_event.metadata, target_object_id):
                 return True
             agent_meta = latest_event.metadata.get('agent', {}) if latest_event.metadata else {}
             current_horizon = agent_meta.get('cameraHorizon', current_horizon)
 
-        raise RuntimeError('Horizon adjustment exceeded limits without finding target object. This happened because an object being held is likely blocking the agent\'s view')
+        return False
 
     @staticmethod
     def _is_object_visible(metadata: Optional[Dict], target_object_id: str) -> bool:
@@ -224,17 +231,28 @@ if __name__ == "__main__":
     parser.add_argument('--smooth_nav', action='store_true')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--reward_config', default='models/config/rewards.json')
-    parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='LLM model to use')
+    parser.add_argument('--model', type=str, default=None, help='LLM model to use')
+    parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat',
+                        help='Backward-compatible LLM model argument')
+    parser.add_argument('--log-model-name', type=str, default=None,
+                        help='Optional log namespace; does not change the API model')
     parser.add_argument('--max_tokens', type=int, default=10000, help='Max tokens for LLM response')
     parser.add_argument('--temperature', type=float, default=0.6, help='Temperature for LLM sampling')
     parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')
     parser.add_argument('--frequency_penalty', type=float, default=0.0, help='Frequency penalty for LLM')
     parser.add_argument('--presence_penalty', type=float, default=0.0, help='Presence penalty for LLM')
     parser.add_argument('--ridx', type=int, default=0, nargs='?', help='Repeat index for single trajectory test')
+    parser.add_argument('--inject-danger', action='store_true',
+                        help='Explicitly inject additional liquid hazards into the restored scene')
     parser.add_argument('--setup_debug', action='store_true', help='Log only setup issues for debugging scene restoration')
 
     
     args = parser.parse_args()
 
     evaluator = EvalLLMAstar(args)
-    evaluator.test_single_trajectory(args.traj_file, goto=True, r_idx=args.ridx, inject_danger=True)
+    evaluator.test_single_trajectory(
+        args.traj_file,
+        goto=True,
+        r_idx=args.ridx,
+        inject_danger=args.inject_danger,
+    )

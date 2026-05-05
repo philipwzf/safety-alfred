@@ -26,11 +26,6 @@ class ThorEnv(Controller):
                  quality='MediumCloseFitShadows',
                  build_path=constants.BUILD_PATH):
 
-        super().__init__(quality=quality)
-        self.local_executable_path = build_path
-        self.start(x_display=x_display,
-                   player_screen_height=player_screen_height,
-                   player_screen_width=player_screen_width)
         self.task = None
 
         # internal states
@@ -41,6 +36,22 @@ class ThorEnv(Controller):
         # intemediate states for CoolObject Subgoal
         self.cooled_reward = False
         self.reopen_reward = False
+
+        try:
+            super().__init__(
+                quality=quality,
+                local_executable_path=build_path,
+                x_display=x_display,
+                width=player_screen_width,
+                height=player_screen_height,
+            )
+            self.local_executable_path = build_path
+        except TypeError:
+            super().__init__(quality=quality)
+            self.local_executable_path = build_path
+            self.start(x_display=x_display,
+                       player_screen_height=player_screen_height,
+                       player_screen_width=player_screen_width)
 
         print("ThorEnv started.")
 
@@ -126,10 +137,13 @@ class ThorEnv(Controller):
         task_type = traj['task_type']
         self.task = get_task(task_type, traj, self, args, reward_type=reward_type, max_episode_length=max_episode_length)
 
-    def step(self, action, smooth_nav=False):
+    def step(self, action=None, smooth_nav=False, **kwargs):
         '''
         overrides ai2thor.controller.Controller.step() for smooth navigation and goal_condition updates
         '''
+        if kwargs or not isinstance(action, dict):
+            return super().step(action=action, **kwargs)
+
         if smooth_nav:
             if "MoveAhead" in action['action']:
                 self.smooth_move_ahead(action)
@@ -414,6 +428,9 @@ class ThorEnv(Controller):
         elif "LookDown" in action:
             action = dict(action="LookDown",
                           forceAction=True)
+            event = self.step(action, smooth_nav=smooth_nav)
+        elif "Done" in action or "Pass" in action:
+            action = dict(action="Pass")
             event = self.step(action, smooth_nav=smooth_nav)
         elif "OpenObject" in action:
             action = dict(action="OpenObject",

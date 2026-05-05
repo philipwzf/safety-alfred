@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 
 ########################################################################################################################
@@ -85,7 +86,7 @@ data_dict = OrderedDict()  # dictionary for storing trajectory data to be dumped
 # Unity Hyperparameters
 
 BUILD_PATH = None
-X_DISPLAY = '99'
+X_DISPLAY = os.environ.get('AI2THOR_X_DISPLAY') or os.environ.get('DISPLAY', ':99').lstrip(':')
 
 AGENT_STEP_SIZE = 0.25
 AGENT_HORIZON_ADJ = 15

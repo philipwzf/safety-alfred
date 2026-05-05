@@ -67,8 +67,11 @@ class EvalLLM:
         # Setup simple logging
         os.makedirs('logs', exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        traj_path = args.traj_file.replace("data/json_2.1.0/", f"{args.llm_model}/").replace("/traj_data.json", "")
-        traj_log_file = os.path.join("logs", "trajectories", traj_path,f"r{args.ridx}_{timestamp}.json")
+        model_name = getattr(args, 'model', None) or getattr(args, 'llm_model', None)
+        log_model_name = getattr(args, 'log_model_name', None) or model_name
+        traj_path = args.traj_file.replace("data/json_2.1.0/", f"{log_model_name}/").replace("/traj_data.json", "")
+        ridx = getattr(args, 'ridx', 0)
+        traj_log_file = os.path.join("logs", "trajectories", traj_path, f"r{ridx}_{timestamp}.json")
         os.makedirs(os.path.dirname(traj_log_file), exist_ok=True)
         log_file = traj_log_file.replace(".json", ".txt")
         self.log_file = log_file
@@ -109,6 +112,7 @@ class EvalLLM:
             def release(self): pass
         
         lock = SimpleLock()  
+        caught_error = None
         try:
             print(f"Testing single trajectory: {traj_file_path}")
             
@@ -116,6 +120,7 @@ class EvalLLM:
             self.evaluate(env, r_idx, traj_data, self.args, lock, successes, failures, results, goto=goto, inject_danger=inject_danger)
 
         except Exception as e:
+            caught_error = e
             print(f"Error during evaluation: {e}")
             import traceback
             traceback.print_exc()
@@ -127,6 +132,8 @@ class EvalLLM:
         print(f"Failures: {len(failures)}")
         if results:
             print(f"Results: {results}")
+        if caught_error is not None:
+            raise caught_error
         
         return successes, failures, results
 
@@ -137,7 +144,7 @@ class EvalLLM:
         # scene setup
         scene_num = traj_data['scene']['scene_num']
         object_poses = traj_data['scene']['object_poses']
-        dirty_and_empty = traj_data['scene']['dirty_and_empty']
+        dirty_and_empty = traj_data['scene'].get('dirty_and_empty', [])
         object_toggles = traj_data['scene']['object_toggles']
 
         scene_name = 'FloorPlan%d' % scene_num
@@ -185,7 +192,20 @@ class EvalLLM:
             print(f"[setup_scene] Restored {len(object_poses)} object poses successfully.")
 
         # initialize to start position
-        event = env.step(dict(traj_data['scene']['init_action']))
+        init_action = dict(traj_data['scene']['init_action'])
+        if init_action.get('action') == 'TeleportFull':
+            init_action.pop('rotateOnTeleport', None)
+            init_action.setdefault('standing', True)
+        event = env.step(init_action)
+        if not event.metadata.get('lastActionSuccess', True):
+            error_msg = f"[setup_scene] Failed to initialize agent position. Trying forceAction. Previous error: {event.metadata.get('errorMessage', '')}"
+            self.log(error_msg)
+            init_action['forceAction'] = True
+            event = env.step(init_action)
+            if not event.metadata.get('lastActionSuccess', True):
+                raise RuntimeError(
+                    f"[setup_scene] Retry with forceAction failed: {event.metadata.get('errorMessage', '')}"
+                )
         if inject_danger:
             # Inject some danger by filling all fillable objects with coffee
             metadata = event.metadata
@@ -458,7 +478,9 @@ if __name__ == "__main__":
     parser.add_argument('--max_fails', type=int, default=5, help='Maximum consecutive action fails before aborting')
     parser.add_argument('--smooth_nav', action='store_true', help='Use smooth navigation')
     parser.add_argument('--debug', action='store_true', help='Enable debug prints')
-    parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='LLM model to use')
+    parser.add_argument('--model', type=str, default=None, help='LLM model to use')
+    parser.add_argument('--llm_model', type=str, default='deepseek/deepseek-chat', help='Backward-compatible LLM model argument')
+    parser.add_argument('--log-model-name', type=str, default=None, help='Optional log namespace; does not change the API model')
     parser.add_argument('--max_tokens', type=int, default=10000, help='Max tokens for LLM response')
     parser.add_argument('--temperature', type=float, default=0.6, help='Temperature for LLM sampling')
     parser.add_argument('--top_p', type=float, default=1.0, help='Top-p for LLM sampling')

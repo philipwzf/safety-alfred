@@ -231,7 +231,10 @@ Generate the action sequence to achieve all subgoals:
             }
             
             data = {
-                "model": getattr(self.args, 'llm_model', 'deepseek/deepseek-chat-v3.1'),
+                "model": (
+                    getattr(self.args, 'model', None)
+                    or getattr(self.args, 'llm_model', 'deepseek/deepseek-chat-v3.1')
+                ),
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
@@ -249,8 +252,13 @@ Generate the action sequence to achieve all subgoals:
                 json=data
             )
             
-            # Raise exception for HTTP errors
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as exc:
+                detail = response.text[:2000]
+                error_msg = f"OpenRouter request failed: {exc}; response={detail}"
+                self.log(f"[ERROR] {error_msg}")
+                raise RuntimeError(error_msg) from exc
             
             response_json = response.json()
             content = response_json['choices'][0]['message']['content']
@@ -264,10 +272,9 @@ Generate the action sequence to achieve all subgoals:
 
         except Exception as e:
             error_msg = f"[ERROR] Unexpected error calling LLM: {e}"
-            self.log(f"{error_msg}")
+            self.log(error_msg)
             print(error_msg)
-
-        return None
+            raise
 
     def parse_llm_response(self, response_text):
         """
@@ -319,41 +326,44 @@ Generate the action sequence to achieve all subgoals:
                 continue
                 
             # Start with object type and ID
-            line = f"- {obj['objectType']} ({obj['objectId']}): "
+            object_type = obj.get('objectType', 'Unknown')
+            object_id = obj.get('objectId', '')
+            line = f"- {object_type} ({object_id}): "
             
             # Collect object properties
             properties = []
             
-            if obj['pickupable'] and not obj['isPickedUp']:
+            if obj.get('pickupable') and not obj.get('isPickedUp'):
                 properties.append("pickupable")
-            elif obj['isPickedUp']:
+            elif obj.get('isPickedUp'):
                 properties.append("being held")
-            if obj['receptacle']:
+            if obj.get('receptacle'):
                 properties.append("receptacle")
-            if obj['openable']:
-                properties.append(f"openable ({'open' if obj['isOpen'] else 'closed'})")
-            if obj['toggleable']:
-                if "Candle" in obj['objectId']:
+            if obj.get('openable'):
+                properties.append(f"openable ({'open' if obj.get('isOpen') else 'closed'})")
+            if obj.get('toggleable'):
+                if "Candle" in object_id:
                     properties.append(f"toggleable ({'it is on'})")
                 else:
-                    properties.append(f"toggleable ({'on' if obj['isToggled'] else 'off'})")
-            if obj['dirtyable']:
-                properties.append(f"{'dirty' if obj['isDirty'] else 'clean'}")
-            if obj['cookable']:
-                properties.append(f"{'cooked' if obj['isCooked'] else 'uncooked'}")
+                    properties.append(f"toggleable ({'on' if obj.get('isToggled') else 'off'})")
+            if obj.get('dirtyable'):
+                properties.append(f"{'dirty' if obj.get('isDirty') else 'clean'}")
+            if obj.get('cookable'):
+                properties.append(f"{'cooked' if obj.get('isCooked') else 'uncooked'}")
             if obj.get('isSliced'):
                 properties.append("sliced")
-            if obj['ObjectTemperature'] != 'RoomTemp':
-                properties.append(f"temperature: {obj['ObjectTemperature']}")
-            if obj['parentReceptacles']:
+            object_temperature = obj.get('ObjectTemperature') or obj.get('temperature') or 'RoomTemp'
+            if object_temperature != 'RoomTemp':
+                properties.append(f"temperature: {object_temperature}")
+            if obj.get('parentReceptacles'):
                 properties.append(f"in receptacle: {', '.join(obj['parentReceptacles'])}")
-            if obj['receptacleObjectIds']:
+            if obj.get('receptacleObjectIds'):
                 properties.append(f"contains {len(obj['receptacleObjectIds'])} items, including:")
                 for rec_id in obj['receptacleObjectIds']:
                     properties.append(f" {rec_id};")
 
             line += ", ".join(properties) if properties else "no special properties"
-            line += f" at {obj['position']}\n"
+            line += f" at {obj.get('position', {})}\n"
             
             # Add visibility indicator if not filtering by visible
             if not filter_visible:

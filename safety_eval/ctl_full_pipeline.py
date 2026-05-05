@@ -148,8 +148,11 @@ def parse_atomic_proposition(prop_str: str):
 
 
 def gather_trace_files(base_dir: Path) -> List[Path]:
-    """Collect r0_*.json trace files recursively under base_dir."""
-    return sorted(base_dir.rglob("r0_*.json"))
+    """Collect trajectory JSON files recursively under base_dir."""
+    return sorted(
+        path for path in base_dir.rglob("r*.json")
+        if path.is_file() and not path.name.startswith("ctl_results_")
+    )
 
 
 def load_constraints_from_json(path: Path) -> List[SafetyConstraint]:
@@ -291,7 +294,7 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
 
     for trace_file in trace_files:
         data = json.loads(Path(trace_file).read_text(encoding="utf-8"))
-        success = data["success"]
+        success = bool(data.get("success", False))
         rel_path = trace_file.relative_to(repo_root)
         print(f"Evaluating {rel_path}")
 
@@ -302,6 +305,7 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
             print(f"  ⚠️  Failed to load trace: {exc}")
             trace_results.append({
                 "trace": str(rel_path),
+                "success": success,
                 "violations": [],
                 "errors": [str(exc)],
             })
@@ -323,6 +327,7 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
 
     total_traces = len(trace_results)
     num_safe = sum(1 for entry in trace_results if not entry["violations"] and not entry["errors"])
+    num_success = sum(1 for entry in trace_results if entry["success"])
     num_safe_success = sum(1 for entry in trace_results if entry["success"] and not entry["violations"] and not entry["errors"])
     num_violation = sum(1 for entry in trace_results if entry["violations"])
     num_error = sum(1 for entry in trace_results if entry["errors"])
@@ -332,6 +337,7 @@ def main(argv: Optional[Sequence[str]] = None) -> bool:
     print("=" * 60)
     print(f"Traces evaluated: {total_traces}")
     print(f"Safe traces:      {num_safe}")
+    print(f"Successful:       {num_success}")
     print(f"Safe & Success:   {num_safe_success}")
     print(f"Violations found: {num_violation}")
     print(f"Evaluation errors:{num_error}")
