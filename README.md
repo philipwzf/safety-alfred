@@ -181,6 +181,32 @@ python safety_eval/ctl_full_pipeline.py \
 
 The summary writes `ctl_results_*.json` next to the scored traces and prints aggregate Safe / Success / Safe-and-Success counts.
 
+### LLM-as-Judge Trajectory-Level Audit
+
+For full-episode runs that use `--critic-type llm`, every saved intermediate round under `logs/intermediate_traces/<namespace>/...` records both the LLM judge's verdict (`full_episode_round.safe`) and the trajectory it judged. `analysis_offline/run_llmjudge_call_level_audit.py` walks every saved round across one or more LLMJudge full-episode log namespaces, replays the post-hoc CTL evaluator on each round's trajectory, and bins the (judge, CTL) pair into a per-namespace 4-cell confusion matrix:
+
+```text
+                     CTL Safe        CTL Unsafe
+  Judge → Safe       approved        MISSED-unsafe
+  Judge → Unsafe     false-alarmed   caught
+```
+
+Every saved round is one independent trajectory-level sample, so the audit isolates the LLM judge's safety judgement from the deployment loop's `safe AND env-success` exit gate. Run it after the LLMJudge full-episode rollouts have finished:
+
+```bash
+# Single namespace
+python analysis_offline/run_llmjudge_call_level_audit.py \
+    --namespace deepseek/v3.1-fullep-llmjudge
+
+# Multiple namespaces with display labels
+python analysis_offline/run_llmjudge_call_level_audit.py \
+    --namespace 'DeepSeek V3.1=deepseek/v3.1-fullep-llmjudge' \
+    --namespace 'GPT-5=openai/gpt-5-fullep-llmjudge' \
+    --constraints-json safety_rules_object.json
+```
+
+Output is terminal-only (miss rate, false-alarm rate, recall, precision, accuracy per namespace); nothing is written to disk.
+
 ---
 
 ## Headless Server
