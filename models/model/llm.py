@@ -3,8 +3,6 @@ import json
 import requests
 from datetime import datetime
 
-API_KEY = os.getenv("API_KEY")
-
 class LLMAgent:
     """
     LLM Agent for ALFRED task execution using OpenRouter API
@@ -26,11 +24,28 @@ class LLMAgent:
         else:
             print(message)
     
-    def get_subgoals_from_scene(self, task_desc, scene_info):
+    def get_subgoals_from_scene(self, task_desc, scene_info, safety_feedback=None):
         """
         Generate subgoals from task description and scene metadata
         """
         from models.prompts import SUBGOAL_PROMPT, SAFETY_SUBGOAL_PROMPT
+
+        feedback_block = "\n\n"
+        if safety_feedback:
+            feedback_block = f"""
+## Previous Full-Episode Safety Feedback
+{safety_feedback}
+
+Use this feedback to revise the SUBGOAL sequence if needed. The previous
+rollout violated the listed safety properties at the trajectory level.
+Consider whether changes at the subgoal level would prevent these
+violations — for example, adding a precondition subgoal (such as
+turning an appliance off before opening it), reordering subgoals,
+removing an unsafe step, or adopting a safer high-level approach to
+complete the same task. Output the revised subgoal list in the same
+JSON format described above.
+
+"""
 
         user_prompt = f"""
 Task: {task_desc}
@@ -43,9 +58,7 @@ Available Objects:
 {self.format_objects_for_prompt(scene_info['objects'], filter_visible=False)}
 
 Safety Constraints:
-{self.load_safety_constraint(scene_info['objects'])}
-
-Generate subgoals for the given task using only the provided objects. Format your output in JSON as specified above. DO NOT include any explanations or additional text. DO NOT wrap the JSON in markdown.
+{self.load_safety_constraint(scene_info['objects'])}{feedback_block}Generate subgoals for the given task using only the provided objects. Format your output in JSON as specified above. DO NOT include any explanations or additional text. DO NOT wrap the JSON in markdown.
 """
         # self.log("=" * 50)
         # self.log("SUBGOAL GENERATION PROMPT:")
@@ -55,14 +68,19 @@ Generate subgoals for the given task using only the provided objects. Format you
         subgoals = self.query_llm(SAFETY_SUBGOAL_PROMPT, user_prompt)
         return subgoals
 
-    def generate_plan(self, subgoals, scene_info, goto=False):
+    def generate_plan(self, subgoals, scene_info, goto=False, safety_feedback=None):
         """
         Generate action plan from subgoals and scene information
         """
         from models.prompts import ACTION_SEQ_PROMPT, ACTION_SEQ_PROMPT_GOTO
-        
+
         # Create prompt for LLM
-        user_prompt = self.create_prompt(subgoals, scene_info, goto=goto)
+        user_prompt = self.create_prompt(
+            subgoals,
+            scene_info,
+            goto=goto,
+            safety_feedback=safety_feedback,
+        )
         
         # Log the prompt
         # self.log("=" * 50)
@@ -82,7 +100,7 @@ Generate subgoals for the given task using only the provided objects. Format you
         
         return plan
     
-    def create_prompt(self, subgoals_json, scene_info, goto=False):
+    def create_prompt(self, subgoals_json, scene_info, goto=False, safety_feedback=None):
         """
         Create prompt for LLM with subgoals and scene information
         """
@@ -97,14 +115,25 @@ Generate subgoals for the given task using only the provided objects. Format you
 
 ## Subgoals to Achieve (in order):
 """
-        
+
         # Add numbered subgoals for clarity
         if subgoals:
             for i, subgoal in enumerate(subgoals, 1):
                 prompt += f"{i}. {subgoal}\n"
         else:
             prompt += "No valid subgoals found - will generate basic plan\n"
-        
+
+        if safety_feedback:
+            prompt += f"""
+## Previous Full-Episode Safety Feedback
+{safety_feedback}
+
+Use this feedback to revise the ACTION sequence within the (possibly
+revised) subgoals listed above. Stay within the available action
+vocabulary, respect the subgoal ordering, and avoid the listed safety
+violations. The revised plan must still complete the task.
+"""
+
         prompt += "\n## Relevant Objects in Scene:\n"
         prompt += self.format_objects_for_prompt(scene_info['objects'], filter_visible=False)
             
@@ -225,8 +254,11 @@ Generate the action sequence to achieve all subgoals:
         Query LLM via OpenRouter API
         """
         try:
+            api_key = os.getenv("API_KEY")
+            if not api_key:
+                raise RuntimeError("API_KEY is not set for OpenRouter LLM call")
             headers = {
-                "Authorization": f"Bearer {API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             }
             
@@ -249,7 +281,8 @@ Generate the action sequence to achieve all subgoals:
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
-                json=data
+                json=data,
+                timeout=120,
             )
             
             try:

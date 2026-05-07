@@ -61,6 +61,14 @@ def _build_command(
         cmd += ['--frequency_penalty', str(args.frequency_penalty)]
     if args.presence_penalty is not None:
         cmd += ['--presence_penalty', str(args.presence_penalty)]
+    # Full-episode ReAct passthrough. Only pass these flags when the selected
+    # evaluator defines them, such as eval_llm_full_react.py.
+    if getattr(args, 'critic_type', None) is not None:
+        cmd += ['--critic-type', str(args.critic_type)]
+    if getattr(args, 'max_loop_limit', None) is not None:
+        cmd += ['--max-loop-limit', str(args.max_loop_limit)]
+    if getattr(args, 'constraints_json', None) is not None:
+        cmd += ['--constraints-json', str(args.constraints_json)]
     return cmd
 
 
@@ -101,6 +109,14 @@ def main() -> int:
     parser.add_argument('--top_p', type=float, default=None)
     parser.add_argument('--frequency_penalty', type=float, default=None)
     parser.add_argument('--presence_penalty', type=float, default=None)
+    # Full-episode ReAct flags (only used when --eval-script is eval_llm_full_react.py).
+    parser.add_argument('--critic-type', dest='critic_type',
+                        choices=['deterministic', 'llm'], default=None,
+                        help='Trace-level critic type for eval_llm_full_react.py')
+    parser.add_argument('--max-loop-limit', dest='max_loop_limit', type=int, default=None,
+                        help='Max ReAct loops per trajectory for eval_llm_full_react.py')
+    parser.add_argument('--constraints-json', dest='constraints_json', default=None,
+                        help='Constraints JSON path for eval_llm_full_react.py')
     parser.add_argument('--dry_run', action='store_true',
                         help='Only print the commands that would be executed')
     parser.add_argument('--workers', type=int, default=1,
